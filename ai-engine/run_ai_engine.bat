@@ -1,0 +1,9 @@
+@echo off
+echo Starting NTEWS AI Engine...
+echo Deactivating virtual environment...
+deactivate 2>nul
+
+echo Using system Python to start AI Engine...
+python -m uvicorn model_integration:app --host 0.0.0.0 --port 8000
+
+pause

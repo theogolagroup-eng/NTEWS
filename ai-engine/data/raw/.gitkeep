@@ -1,0 +1,7 @@
+# Raw Data Directory
+# This directory contains raw downloaded datasets from:
+# - ACLED (Armed Conflict Location & Event Data)
+# - GTD (Global Terrorism Database)
+# - HDX (Humanitarian Data Exchange)
+# 
+# Run: python download_kenya_security_data.py to populate this folder

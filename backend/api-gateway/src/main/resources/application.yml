@@ -1,0 +1,64 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Minimal configuration - no discovery, no load balancer
+      routes:
+        - id: auth-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+        
+        - id: intelligence-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/intelligence/**
+          filters:
+            - StripPrefix=0
+        
+        - id: alert-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/alerts/**
+          filters:
+            - StripPrefix=0
+        
+        - id: prediction-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/predictions/**
+          filters:
+            - StripPrefix=0
+            
+        - id: ingestion-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/ingestion/**
+          filters:
+            - StripPrefix=0
+        
+        - id: ai-engine-proxy
+          uri: http://localhost:8000
+          predicates:
+            - Path=/api/ai-engine/**
+          filters:
+            - StripPrefix=2
+    # Disable all auto-configurations that cause issues
+    discovery:
+      locator:
+        enabled: false
+    loadbalancer:
+      enabled: false
+  
+# Basic management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

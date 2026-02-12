@@ -1,0 +1,82 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: ingestion-service
+  
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: threat_data:com.ntews.ingestion.model.ThreatData,social_media_data:com.ntews.ingestion.model.SocialMediaData,cctv_data:com.ntews.ingestion.model.CCTVData
+    
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DB:ntews_ingestion}
+    
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+# Data Source Configuration
+data-sources:
+  social-media:
+    twitter:
+      api-key: ${TWITTER_API_KEY}
+      api-secret: ${TWITTER_API_SECRET}
+      access-token: ${TWITTER_ACCESS_TOKEN}
+      access-secret: ${TWITTER_ACCESS_SECRET}
+    facebook:
+      app-id: ${FACEBOOK_APP_ID}
+      app-secret: ${FACEBOOK_APP_SECRET}
+    telegram:
+      bot-token: ${TELEGRAM_BOT_TOKEN}
+  
+  news-feeds:
+    news-api:
+      api-key: ${NEWS_API_KEY}
+      base-url: https://newsapi.org/v2
+  
+  cctv:
+    rtsp-endpoints:
+      - ${CCTV_ENDPOINT_1:rtsp://localhost:554/stream1}
+      - ${CCTV_ENDPOINT_2:rtsp://localhost:554/stream2}
+  
+  cyber-feeds:
+    firewall:
+      endpoint: ${FIREWALL_API_ENDPOINT:http://localhost:9000/api/logs}
+    ids:
+      endpoint: ${IDS_API_ENDPOINT:http://localhost:9001/api/alerts}
+
+# Ingestion Configuration
+ingestion:
+  batch-size: 100
+  processing-interval: 5000  # 5 seconds
+  max-retries: 3
+  retry-delay: 1000  # 1 second
+  
+  # Data preprocessing settings
+  preprocessing:
+    text:
+      min-length: 10
+      max-length: 10000
+      languages: [en, sw, ke]  # English, Swahili, Sheng
+    image:
+      max-size-mb: 10
+      supported-formats: [jpg, jpeg, png, mp4]
+      frame-rate: 1  # Extract 1 frame per second from video
+
+logging:
+  level:
+    com.ntews.ingestion: DEBUG
+    org.springframework.kafka: INFO

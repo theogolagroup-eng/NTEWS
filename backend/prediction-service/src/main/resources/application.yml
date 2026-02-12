@@ -1,0 +1,92 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: prediction-service
+  
+  # Kafka disabled for local development
+  # kafka:
+  #   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  #   consumer:
+  #     group-id: prediction-service
+  #     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  #     value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+  #     properties:
+  #       spring.json.type.mapping: intelligence_report:com.ntews.intel.model.IntelligenceReport
+  #     auto-offset-reset: latest
+  #   listener:
+  #     ack-mode: manual_immediate
+  
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DB:ntews_prediction}
+    
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+# AI Engine Configuration
+ai-engine:
+  base-url: ${AI_ENGINE_URL:http://localhost:8000}
+  timeout: 60000  # 60 seconds for prediction models
+  retry-attempts: 3
+
+# Prediction Configuration
+prediction:
+  forecasting:
+    models:
+      risk-trend:
+        lookback-days: 30
+        forecast-hours: 24
+        update-interval: 3600000  # 1 hour
+      hotspot:
+        lookback-days: 7
+        forecast-hours: 48
+        update-interval: 1800000  # 30 minutes
+    
+    thresholds:
+      high-risk: 0.7
+      medium-risk: 0.4
+      low-risk: 0.2
+    
+    confidence:
+      minimum: 0.6
+      high: 0.8
+  
+  ensemble:
+    weights:
+      nlp: 0.3
+      vision: 0.3
+      historical: 0.2
+      contextual: 0.2
+    
+    voting:
+      consensus-threshold: 0.6
+
+# Scheduling
+scheduling:
+  risk-forecast:
+    cron: "0 0 * * * *"  # Every hour
+  hotspot-analysis:
+    cron: "0 */30 * * * *"  # Every 30 minutes
+  model-retraining:
+    cron: "0 0 2 * * *"  # Daily at 2 AM
+
+logging:
+  level:
+    com.ntews.predict: DEBUG
+    org.springframework.kafka: INFO

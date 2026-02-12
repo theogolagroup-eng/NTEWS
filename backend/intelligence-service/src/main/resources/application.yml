@@ -1,0 +1,79 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: intelligence-service
+  
+  # Kafka disabled for local development
+  # kafka:
+  #   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  #   consumer:
+  #     group-id: intelligence-service
+  #     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  #     value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+  #     properties:
+  #       spring.json.type.mapping: threat_data:com.ntews.intel.model.ThreatData,social_media_data:com.ntews.intel.model.SocialMediaData,cctv_data:com.ntews.intel.model.CCTVData
+  #     auto-offset-reset: latest
+  #   listener:
+  #     ack-mode: manual_immediate
+  
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DB:ntews_intelligence}
+    
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+  
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+# AI Engine Configuration
+ai-engine:
+  base-url: ${AI_ENGINE_URL:http://localhost:8000}
+  timeout: 30000  # 30 seconds
+  retry-attempts: 3
+
+# Intelligence Processing Configuration
+intelligence:
+  processing:
+    batch-size: 50
+    max-concurrent-processes: 10
+    timeout-seconds: 60
+  
+  threat-scoring:
+    weights:
+      social-media: 0.3
+      cctv: 0.4
+      cyber: 0.3
+    threshold:
+      low: 0.3
+      medium: 0.6
+      high: 0.8
+  
+  fusion:
+    correlation-window: 3600000  # 1 hour in milliseconds
+    location-radius: 1000  # 1km in meters
+    time-window: 1800000  # 30 minutes in milliseconds
+
+logging:
+  level:
+    com.ntews.intel: DEBUG
+    org.springframework.kafka: INFO
+    org.elasticsearch: WARN

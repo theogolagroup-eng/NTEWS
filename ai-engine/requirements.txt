@@ -1,0 +1,16 @@
+# NTEWS AI Engine - MVP Requirements
+# Core FastAPI Framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Data Processing
+pydantic>=2.4.0
+python-multipart>=0.0.6
+
+# Basic ML Libraries (for future enhancements)
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Development (optional)
+pytest>=7.4.0
+black>=23.9.0

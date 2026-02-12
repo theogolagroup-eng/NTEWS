@@ -1,0 +1,15 @@
+# Trained Models Directory
+# This directory contains trained ML models:
+# - random_forest.pkl
+# - gradient_boosting.pkl
+# - logistic_regression.pkl
+# - svm.pkl
+# - naive_bayes.pkl
+# - xgboost.pkl
+# - random_forest_geo.pkl
+# - xgboost_geo.pkl
+# - tfidf_vectorizer.pkl
+# - label_encoder.pkl
+# - metadata.json
+#
+# Run: python train_models.py to generate these files

@@ -1,0 +1,31 @@
+{
+  "training_date": "2026-02-04T16:00:11.672660",
+  "models_trained": [
+    "random_forest",
+    "gradient_boosting",
+    "logistic_regression",
+    "svm",
+    "xgboost",
+    "deep_learning"
+  ],
+  "performance": {
+    "random_forest": {
+      "accuracy": 0.8678571428571429
+    },
+    "gradient_boosting": {
+      "accuracy": 0.8642857142857143
+    },
+    "logistic_regression": {
+      "accuracy": 0.8910714285714286
+    },
+    "svm": {
+      "accuracy": 0.6053571428571428
+    },
+    "xgboost": {
+      "accuracy": 0.8642857142857143
+    },
+    "deep_learning": {
+      "accuracy": "N/A"
+    }
+  }
+}
