@@ -3,6 +3,9 @@ package com.ntews.alert.service;
 import com.ntews.alert.controller.AlertController.*;
 import com.ntews.alert.model.Alert;
 import com.ntews.alert.repository.AlertRepository;
+import com.ntews.alert.controller.WebSocketController;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.ApplicationContext;
 import com.ntews.alert.client.AIEngineClient;
 import com.ntews.alert.client.AIEngineClient.AlertPriorityAnalysis;
 import com.ntews.alert.client.AIEngineClient.ThreatEvolutionPrediction;
@@ -25,6 +28,7 @@ public class AlertServiceImpl implements AlertService {
     private final AlertRepository alertRepository;
     private final AIEngineClient aiEngineClient;
     private final NLPAnalysisService nlpAnalysisService;
+    private final ApplicationContext applicationContext;
     
     @Override
     public Page<Alert> getAlerts(
@@ -108,6 +112,16 @@ public class AlertServiceImpl implements AlertService {
             savedAlert.getId(), savedAlert.getTitle(), savedAlert.getPriority(), 
             savedAlert.getAiRiskLevel(), savedAlert.getNlpClassification());
         
+        // Broadcast new alert to WebSocket clients
+        try {
+            WebSocketController webSocketController = applicationContext.getBean(WebSocketController.class);
+            if (webSocketController != null) {
+                webSocketController.sendRealTimeAlert(savedAlert);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to broadcast alert to WebSocket clients: {}", e.getMessage());
+        }
+        
         return savedAlert;
     }
     
@@ -177,50 +191,70 @@ public class AlertServiceImpl implements AlertService {
         long totalAlerts = alertRepository.count();
         summary.setTotalAlerts((int) totalAlerts);
         
-        // Get active alerts
-        List<Alert> activeAlerts = alertRepository.findActiveAlertsOnly();
-        summary.setActiveAlerts(activeAlerts.size());
+        try {
+            // Get active alerts with null safety - use corrected query
+            List<Alert> activeAlerts = alertRepository.findActiveAlertsOnly();
+            if (activeAlerts == null) {
+                activeAlerts = new ArrayList<>();
+            }
+            
+            summary.setActiveAlerts(activeAlerts.size());
+            
+            // Get unacknowledged alerts with proper filtering
+            long unacknowledgedCount = activeAlerts.stream()
+                    .filter(alert -> alert != null && alert.getStatus() == Alert.AlertStatus.ACTIVE)
+                    .count();
+            summary.setUnacknowledgedAlerts((int) unacknowledgedCount);
+            
+            // Get severity counts with null safety
+            Map<String, Long> severityCounts = activeAlerts.stream()
+                    .filter(alert -> alert != null && alert.getSeverity() != null)
+                    .collect(Collectors.groupingBy(
+                            alert -> alert.getSeverity().getValue(),
+                            Collectors.counting()
+                    ));
+            
+            summary.setCriticalAlerts(severityCounts.getOrDefault("critical", 0L).intValue());
+            summary.setHighAlerts(severityCounts.getOrDefault("high", 0L).intValue());
+            summary.setMediumAlerts(severityCounts.getOrDefault("medium", 0L).intValue());
+            summary.setLowAlerts(severityCounts.getOrDefault("low", 0L).intValue());
+            
+            // Get severity counts list
+            List<AlertSeverityCount> severityCountList = severityCounts.entrySet().stream()
+                    .map(entry -> new AlertSeverityCount(entry.getKey(), entry.getValue().intValue()))
+                    .collect(Collectors.toList());
+            
+            summary.setSeverityCounts(severityCountList);
         
-        // Get unacknowledged alerts
-        List<Alert> unacknowledgedAlerts = activeAlerts.stream()
-                .filter(alert -> alert.getStatus() == Alert.AlertStatus.ACTIVE)
-                .collect(Collectors.toList());
-        summary.setUnacknowledgedAlerts(unacknowledgedAlerts.size());
-        
-        // Get severity counts
-        Map<String, Long> severityCounts = activeAlerts.stream()
-                .collect(Collectors.groupingBy(
-                        alert -> alert.getSeverity().getValue(),
-                        Collectors.counting()
-                ));
-        
-        summary.setCriticalAlerts(severityCounts.getOrDefault("critical", 0L).intValue());
-        summary.setHighAlerts(severityCounts.getOrDefault("high", 0L).intValue());
-        summary.setMediumAlerts(severityCounts.getOrDefault("medium", 0L).intValue());
-        summary.setLowAlerts(severityCounts.getOrDefault("low", 0L).intValue());
-        
-        // Get severity counts list
-        List<AlertSeverityCount> severityCountList = severityCounts.entrySet().stream()
-                .map(entry -> new AlertSeverityCount(entry.getKey(), entry.getValue().intValue()))
-                .collect(Collectors.toList());
-        
-        summary.setSeverityCounts(severityCountList);
-        
-        // Get recent alerts
-        List<RecentAlert> recentAlerts = activeAlerts.stream()
-                .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
-                .limit(5)
-                .map(alert -> new RecentAlert(
-                        alert.getId(),
-                        alert.getTitle(),
-                        alert.getSeverity().getValue(),
-                        alert.getStatus().getValue(),
-                        alert.getCreatedAt(),
-                        alert.getLocation() != null ? alert.getLocation().getAddress() : "Unknown"
-                ))
-                .collect(Collectors.toList());
-        
-        summary.setRecentAlerts(recentAlerts);
+        // Get recent alerts with null safety
+            List<RecentAlert> recentAlerts = activeAlerts.stream()
+                    .filter(alert -> alert != null && alert.getCreatedAt() != null)
+                    .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
+                    .limit(5)
+                    .map(alert -> new RecentAlert(
+                            alert.getId(),
+                            alert.getTitle() != null ? alert.getTitle() : "Untitled Alert",
+                            alert.getSeverity() != null ? alert.getSeverity().getValue() : "unknown",
+                            alert.getStatus() != null ? alert.getStatus().getValue() : "unknown",
+                            alert.getCreatedAt(),
+                            alert.getLocation() != null ? alert.getLocation().getAddress() : "Unknown"
+                    ))
+                    .collect(Collectors.toList());
+            
+            summary.setRecentAlerts(recentAlerts);
+            
+        } catch (Exception e) {
+            log.error("Error generating alert dashboard summary: {}", e.getMessage());
+            // Set default values on error
+            summary.setActiveAlerts(0);
+            summary.setUnacknowledgedAlerts(0);
+            summary.setCriticalAlerts(0);
+            summary.setHighAlerts(0);
+            summary.setMediumAlerts(0);
+            summary.setLowAlerts(0);
+            summary.setSeverityCounts(new ArrayList<>());
+            summary.setRecentAlerts(new ArrayList<>());
+        }
         
         return summary;
     }
@@ -491,6 +525,20 @@ public class AlertServiceImpl implements AlertService {
                 .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error fetching AI-enhanced alerts", e);
+            return new ArrayList<>();
+        }
+    }
+    
+    @Override
+    public List<Alert> getRecentAlerts(int limit) {
+        try {
+            return alertRepository.findAll(
+                org.springframework.data.domain.PageRequest.of(0, limit, 
+                    org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+                )
+            ).getContent();
+        } catch (Exception e) {
+            log.error("Error fetching recent alerts with limit {}: {}", limit, e.getMessage());
             return new ArrayList<>();
         }
     }

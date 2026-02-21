@@ -268,7 +268,7 @@ export default function AlertsPage() {
       dataIndex: 'severity',
       key: 'severity',
       render: (severity: string) => (
-        <Tag color={getSeverityColor(severity)}>{severity.toUpperCase()}</Tag>
+        <Tag color={getSeverityColor(severity)}>{severity?.toUpperCase() || 'UNKNOWN'}</Tag>
       ),
       filters: [
         { text: 'Critical', value: 'critical' },
@@ -283,7 +283,7 @@ export default function AlertsPage() {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={getStatusColor(status)}>{status.toUpperCase()}</Tag>
+        <Tag color={getStatusColor(status)}>{status?.toUpperCase() || 'UNKNOWN'}</Tag>
       ),
       filters: [
         { text: 'Active', value: 'active' },
@@ -298,7 +298,7 @@ export default function AlertsPage() {
       dataIndex: 'priority',
       key: 'priority',
       render: (priority: string) => (
-        <Tag color={getPriorityColor(priority)}>{priority.toUpperCase()}</Tag>
+        <Tag color={getPriorityColor(priority)}>{priority?.toUpperCase() || 'UNKNOWN'}</Tag>
       ),
     },
     {
@@ -556,17 +556,17 @@ export default function AlertsPage() {
               <Descriptions bordered column={2}>
                 <Descriptions.Item label="Severity">
                   <Tag color={getSeverityColor(selectedAlert.severity)}>
-                    {selectedAlert.severity.toUpperCase()}
+                    {selectedAlert.severity?.toUpperCase() || 'UNKNOWN'}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="Status">
                   <Tag color={getStatusColor(selectedAlert.status)}>
-                    {selectedAlert.status.toUpperCase()}
+                    {selectedAlert.status?.toUpperCase() || 'UNKNOWN'}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="Priority">
                   <Tag color={getPriorityColor(selectedAlert.priority)}>
-                    {selectedAlert.priority.toUpperCase()}
+                    {selectedAlert.priority?.toUpperCase() || 'UNKNOWN'}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="Category">

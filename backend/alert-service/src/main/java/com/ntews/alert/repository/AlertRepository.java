@@ -17,6 +17,8 @@ public interface AlertRepository extends MongoRepository<Alert, String> {
     
     Page<Alert> findByStatus(String status, Pageable pageable);
     
+    List<Alert> findByStatus(String status);
+    
     Page<Alert> findByCategory(String category, Pageable pageable);
     
     Page<Alert> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end, Pageable pageable);
@@ -28,7 +30,7 @@ public interface AlertRepository extends MongoRepository<Alert, String> {
     @Query("{ 'status': { $ne: 'resolved' }, 'status': { $ne: 'closed' } }")
     List<Alert> findActiveAlerts();
     
-    @Query("{ 'status': 'active' }")
+    @Query("{ 'status.value': 'active' }")
     List<Alert> findActiveAlertsOnly();
     
     @Query("{ 'status': 'active', 'severity': { $in: ?0 } }")

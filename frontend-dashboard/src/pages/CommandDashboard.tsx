@@ -108,44 +108,65 @@ export default function CommandDashboard() {
     // Set up periodic refresh
     const refreshInterval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
     
-    // Set up WebSocket for real-time updates with reconnection logic
+    // Set up WebSocket for real-time updates with plain WebSocket
     let ws: WebSocket | null = null;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
     
     const connectWebSocket = () => {
       try {
-        ws = new WebSocket('ws://localhost:8081/ws/alerts');
+        // Use the direct WebSocket endpoint
+        ws = new WebSocket('ws://localhost:8081/ws/alerts-direct');
         
         ws.onopen = () => {
-          console.log('WebSocket connected');
+          console.log('WebSocket connected successfully');
           reconnectAttempts = 0;
+          
+          // Send subscription message
+          ws.send(JSON.stringify({
+            type: 'subscribe',
+            message: 'Frontend connected to alerts'
+          }));
         };
         
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log('Real-time alert:', data);
-            fetchDashboardData(); // Refresh data when new alert arrives
+            console.log('Real-time WebSocket message:', data);
+            
+            if (data.type === 'alert' && data.data) {
+              console.log('New alert received:', data.data);
+              fetchDashboardData(); // Refresh data when new alert arrives
+            } else if (data.type === 'initial_data' && data.alerts) {
+              console.log('Initial alerts loaded:', data.alerts.length);
+            } else if (data.type === 'system_status') {
+              console.log('System status update:', data.status);
+            }
           } catch (error) {
             console.error('Error parsing WebSocket message:', error);
           }
         };
         
-        ws.onclose = () => {
-          console.log('WebSocket disconnected');
+        ws.onclose = (event) => {
+          console.log('WebSocket disconnected:', event.code, event.reason);
           // Attempt to reconnect
           if (reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
+            console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
             setTimeout(connectWebSocket, 1000 * reconnectAttempts);
+          } else {
+            console.error('Max reconnection attempts reached');
           }
         };
         
         ws.onerror = (error) => {
           console.error('WebSocket error:', error);
         };
+        
       } catch (error) {
         console.error('Failed to create WebSocket connection:', error);
+        // Fallback to polling if WebSocket fails
+        console.log('Falling back to polling mode');
       }
     };
     
@@ -153,7 +174,9 @@ export default function CommandDashboard() {
     
     return () => {
       if (refreshInterval) clearInterval(refreshInterval);
-      if (ws) ws.close();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
     };
   }, []);
 
@@ -238,7 +261,7 @@ export default function CommandDashboard() {
       dataIndex: 'severity',
       key: 'severity',
       render: (severity: string) => (
-        <Tag color={getSeverityColor(severity)}>{severity.toUpperCase()}</Tag>
+        <Tag color={getSeverityColor(severity)}>{severity?.toUpperCase() || 'UNKNOWN'}</Tag>
       ),
     },
     {
@@ -577,7 +600,7 @@ export default function CommandDashboard() {
                     </div>
                     <h4 style={{ margin: '8px 0' }}>{hotspot.locationName}</h4>
                     <Tag color={getSeverityColor(hotspot.severity)} style={{ marginBottom: '8px' }}>
-                      {hotspot.severity.toUpperCase()}
+                      {hotspot.severity?.toUpperCase() || 'UNKNOWN'}
                     </Tag>
                     <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
                       {hotspot.threatType}

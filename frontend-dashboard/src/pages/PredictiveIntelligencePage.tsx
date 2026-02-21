@@ -426,7 +426,7 @@ export default function PredictiveIntelligencePage() {
                     <div style={{ flex: 1 }}>
                       <h4 style={{ margin: '0 0 8px 0' }}>{hotspot.locationName}</h4>
                       <Tag color={getSeverityColor(hotspot.severity)}>
-                        {hotspot.severity.toUpperCase()}
+                        {hotspot.severity?.toUpperCase() || 'UNKNOWN'}
                       </Tag>
                       <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                         {hotspot.threatType}
