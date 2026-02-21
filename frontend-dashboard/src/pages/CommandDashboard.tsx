@@ -115,7 +115,7 @@ export default function CommandDashboard() {
     
     const connectWebSocket = () => {
       try {
-        ws = new WebSocket('ws://localhost:8084/ws/alerts');
+        ws = new WebSocket('ws://localhost:8081/ws/alerts');
         
         ws.onopen = () => {
           console.log('WebSocket connected');

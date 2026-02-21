@@ -24,6 +24,7 @@ public class AlertServiceImpl implements AlertService {
     
     private final AlertRepository alertRepository;
     private final AIEngineClient aiEngineClient;
+    private final NLPAnalysisService nlpAnalysisService;
     
     @Override
     public Page<Alert> getAlerts(
@@ -47,6 +48,11 @@ public class AlertServiceImpl implements AlertService {
     @Override
     public Optional<Alert> getAlert(String id) {
         return alertRepository.findById(id);
+    }
+    
+    @Override
+    public Alert getAlertById(String alertId) {
+        return alertRepository.findById(alertId).orElse(null);
     }
     
     @Override
@@ -86,9 +92,21 @@ public class AlertServiceImpl implements AlertService {
             setDefaultAIValues(alert);
         }
         
+        // Perform NLP analysis
+        try {
+            alert = nlpAnalysisService.analyzeAlertWithNLP(alert);
+            log.info("NLP analysis completed for alert {}: classification={}, confidence={}, risk_score={}", 
+                alert.getId(), alert.getNlpClassification(), alert.getNlpConfidence(), alert.getNlpRiskScore());
+            
+        } catch (Exception e) {
+            log.warn("NLP analysis failed for alert {}, using defaults: {}", alert.getId(), e.getMessage());
+            // NLP service sets default values automatically
+        }
+        
         Alert savedAlert = alertRepository.save(alert);
-        log.info("Created alert: {} - {} (Priority: {}, AI Risk: {})", 
-            savedAlert.getId(), savedAlert.getTitle(), savedAlert.getPriority(), savedAlert.getAiRiskLevel());
+        log.info("Created alert: {} - {} (Priority: {}, AI Risk: {}, NLP Classification: {})", 
+            savedAlert.getId(), savedAlert.getTitle(), savedAlert.getPriority(), 
+            savedAlert.getAiRiskLevel(), savedAlert.getNlpClassification());
         
         return savedAlert;
     }

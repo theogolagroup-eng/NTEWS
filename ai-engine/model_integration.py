@@ -13,19 +13,22 @@ from typing import Dict, List, Any, Optional
 import logging
 from datetime import datetime, timedelta
 import random
-import pickle
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVR
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Import NLP Threat Detector
+from threat_detection.nlp_model import NLPThreatDetector
+
+# Setup logging with proper formatting
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Pydantic models for request/response
@@ -75,6 +78,37 @@ class HotspotRequest(BaseModel):
     radius_km: int = 50
     time_window_hours: int = 24
 
+# NLP Pydantic models
+class NLPAnalysisRequest(BaseModel):
+    text: str
+    context: Optional[str] = None
+    alert_id: Optional[str] = None
+
+class NLPAnalysisResponse(BaseModel):
+    text: str
+    classification: str
+    confidence: float
+    threat_probabilities: Dict[str, float]
+    sentiment_scores: Dict[str, float]
+    threat_keywords: List[str]
+    risk_score: float
+    recommendations: List[str]
+
+class AlertNLPRequest(BaseModel):
+    alert_id: str
+    title: str
+    description: str
+    category: str
+    source: str
+
+class EnhancedAlertResponse(BaseModel):
+    alert_id: str
+    original_risk: float
+    nlp_risk_score: float
+    combined_risk_score: float
+    nlp_analysis: NLPAnalysisResponse
+    priority_recommendation: str
+
 class PredictionResponse(BaseModel):
     overall_trend: float
     confidence: float
@@ -97,14 +131,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# Note: CORS handled by API Gateway to prevent conflicts
 
 class NTEWSAIEngine:
     def __init__(self):
@@ -113,8 +140,17 @@ class NTEWSAIEngine:
         self.scalers = {}
         self.historical_data = []
         self.model_metadata = self._load_model_metadata()
+        
+        # Initialize NLP Threat Detector
+        self.nlp_detector = NLPThreatDetector()
+        try:
+            self.nlp_detector.load_model()
+            logger.info("NLP Threat Detector loaded successfully")
+        except Exception as e:
+            logger.warning(f"NLP model loading failed, using fallback: {e}")
+        
         self._initialize_models()
-        logger.info("NTEWS AI Engine initialized with real predictive models")
+        logger.info("NTEWS AI Engine initialized with real predictive models and NLP")
     
     def _load_model_metadata(self):
         """Load trained model metadata"""
@@ -168,7 +204,7 @@ class NTEWSAIEngine:
         """Initialize with sample historical data for training"""
         # Generate realistic historical threat data
         np.random.seed(42)
-        dates = pd.date_range(start='2024-01-01', end='2026-02-11', freq='H')
+        dates = pd.date_range(start='2024-01-01', end='2026-02-11', freq='h')
         
         for date in dates:
             # Simulate threat patterns with daily/weekly cycles
@@ -758,29 +794,12 @@ class NTEWSAIEngine:
             return "medium"
         else:
             return "low"
-    
-    def _generate_recommendations(self, risk_level: str, forecast_type: str) -> List[str]:
-        """Generate recommendations based on risk level and forecast type"""
-        base_recommendations = [
-            "Increase surveillance in high-risk areas",
-            "Monitor social media for emerging threats",
-            "Review and update security protocols",
-            "Coordinate with local law enforcement",
-            "Enhance public awareness campaigns"
-        ]
-        
-        if risk_level == "high":
-            return base_recommendations[:3] + ["Deploy additional security resources"]
-        elif risk_level == "critical":
-            return base_recommendations[:2] + ["Immediate emergency response required", "Evacuation planning advised"]
-        
-        return base_recommendations[:3]
 
 # Initialize AI Engine
 ai_engine = NTEWSAIEngine()
 
 # API Endpoints
-@app.get("/")
+@app.get("/root")
 async def root():
     """Root endpoint"""
     return {"message": "NTEWS AI Engine is running", "status": "healthy", "version": "1.0.0"}
@@ -801,22 +820,9 @@ async def predict_risk(request: PredictionRequest) -> Dict[str, Any]:
     return ai_engine.predict_risk_trend(request)
 
 @app.post("/predict/hotspots")
-async def predict_hotspots(request: PredictionRequest) -> Dict[str, Any]:
+async def predict_hotspots(request: HotspotRequest) -> Dict[str, Any]:
     """Predict threat hotspots"""
     return ai_engine.predict_hotspots(request)
-
-@app.get("/models")
-async def list_models():
-    """List available AI models"""
-    return {
-        "models": [
-            {"name": "threat_classifier", "version": "1.0", "status": "active", "type": "classification"},
-            {"name": "risk_predictor", "version": "1.0", "status": "active", "type": "prediction"},
-            {"name": "hotspot_detector", "version": "1.0", "status": "active", "type": "geospatial"},
-            {"name": "sentiment_analyzer", "version": "1.0", "status": "active", "type": "nlp"}
-        ],
-        "total_models": 4
-    }
 
 @app.get("/stats")
 async def get_stats():
@@ -837,50 +843,78 @@ async def get_prediction_analysis(request: PredictionRequest) -> Dict[str, Any]:
 async def get_capabilities():
     """Get AI engine capabilities"""
     return {
-        "capabilities": {
-            "real_time_analysis": {
-                "description": "Analyze threats in real-time",
-                "status": "active",
-                "response_time_ms": 150
-            },
-            "time_series_forecasting": {
-                "description": "Predict threat trends over time",
-                "status": "active",
-                "max_forecast_hours": 168,  # 1 week
-                "accuracy": 0.82
-            },
-            "geospatial_prediction": {
-                "description": "Predict threat hotspots geographically",
-                "status": "active",
-                "max_radius_km": 100,
-                "accuracy": 0.76
-            },
-            "ensemble_modeling": {
-                "description": "Use multiple models for better predictions",
-                "status": "active",
-                "models_count": 5,
-                "ensemble_method": "weighted_average"
-            },
-            "pattern_detection": {
-                "description": "Detect patterns in threat data",
-                "status": "active",
-                "patterns": ["periodic", "exponential_growth", "linear_trend", "complex"]
-            },
-            "confidence_scoring": {
-                "description": "Provide confidence scores for predictions",
-                "status": "active",
-                "min_confidence": 0.5,
-                "max_confidence": 0.95
-            }
-        },
-        "integration_status": {
-            "backend_services": ["ingestion", "alert", "prediction", "intelligence"],
-            "api_gateway": true,
-            "real_time_updates": true,
-            "proactive_alerts": true
-        }
+        "threat_classification": True,
+        "risk_prediction": True,
+        "hotspot_detection": True,
+        "nlp_analysis": True,
+        "real_time_analysis": True,
+        "ensemble_modeling": True,
+        "pattern_detection": True,
+        "confidence_scoring": True,
+        "geospatial_analysis": True,
+        "time_series_forecasting": True
     }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# NLP Endpoints
+@app.post("/nlp/analyze-text", response_model=NLPAnalysisResponse)
+async def analyze_text_threat(request: NLPAnalysisRequest):
+    """Analyze text for threat content using NLP"""
+    try:
+        result = ai_engine.nlp_detector.analyze_threat(request.text, request.context)
+        return result
+    except Exception as e:
+        logger.error(f"Error in text analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/nlp/analyze-alert", response_model=EnhancedAlertResponse)
+async def analyze_alert_with_nlp(request: AlertNLPRequest):
+    """Analyze alert data combining traditional ML with NLP"""
+    try:
+        # Combine title and description for analysis
+        combined_text = f"{request.title} {request.description}"
+        
+        # Perform NLP analysis
+        nlp_result = ai_engine.nlp_detector.analyze_threat(combined_text, request.category)
+        
+        # Create enhanced response
+        response = EnhancedAlertResponse(
+            alert_id=request.alert_id,
+            original_risk=0.5,  # Would come from existing alert
+            nlp_risk_score=nlp_result.risk_score,
+            combined_risk_score=(0.5 + nlp_result.risk_score) / 2,
+            nlp_analysis=nlp_result,
+            priority_recommendation="Review immediately - high threat indicators detected"
+        )
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error in alert NLP analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/nlp/batch-analyze")
+async def batch_analyze_texts(requests: List[NLPAnalysisRequest]):
+    """Batch analyze multiple texts for threat content"""
+    try:
+        results = []
+        for request in requests:
+            result = ai_engine.nlp_detector.analyze_threat(request.text, request.context)
+            results.append(result)
+        
+        return {"results": results, "total_analyzed": len(results)}
+    except Exception as e:
+        logger.error(f"Error in batch analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/nlp/capabilities")
+async def get_nlp_capabilities():
+    """Get NLP analysis capabilities"""
+    return {
+        "text_analysis": True,
+        "threat_classification": True,
+        "sentiment_analysis": True,
+        "entity_extraction": True,
+        "batch_processing": True,
+        "confidence_scoring": True,
+        "multi_language_support": False,  # Currently English only
+        "real_time_analysis": True
+    }

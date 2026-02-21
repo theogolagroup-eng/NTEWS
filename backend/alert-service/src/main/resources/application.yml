@@ -1,9 +1,20 @@
 server:
-  port: 8084
+  port: 8081
 
 spring:
   application:
     name: alert-service
+  
+  # Disable Spring Security auto-configuration for development
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+  
+  # AI Engine Integration
+  ai:
+    engine:
+      url: ${AI_ENGINE_URL:http://localhost:8000}
+      timeout: 5000
   
   # Kafka disabled for local development
   # kafka:
@@ -20,17 +31,19 @@ spring:
   
   data:
     mongodb:
-      uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DB:ntews_alerts}
+      uri: mongodb://localhost:27017/ntews_alerts
+      auto-index-creation: true
     
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: 2000ms
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
+    # Redis disabled for local development
+    # redis:
+    #   host: ${REDIS_HOST:localhost}
+    #   port: ${REDIS_PORT:6379}
+    #   timeout: 2000ms
+    #   lettuce:
+    #     pool:
+    #       max-active: 8
+    #       max-idle: 8
+    #       min-idle: 0
   
   mail:
     host: ${SMTP_HOST:smtp.gmail.com}
@@ -45,12 +58,13 @@ spring:
             enable: true
   
   
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
+# Eureka disabled for local development
+# eureka:
+#   client:
+#     service-url:
+#       defaultZone: http://eureka-server:8761/eureka/
+#     register-with-eureka: true
+#     fetch-registry: true
 
 # WebSocket Configuration
 websocket:

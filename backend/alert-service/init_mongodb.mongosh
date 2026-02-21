@@ -1,0 +1,74 @@
+// MongoDB Initialization Script for NTEWS Alert Service
+// Run this script in MongoDB shell to initialize the database
+
+// Switch to ntews_alerts database
+use ntews_alerts;
+
+// Create alerts collection with sample data
+db.alerts.insertMany([
+  {
+    _id: ObjectId(),
+    id: "alert-001",
+    title: "Suspicious Network Activity Detected",
+    description: "Unusual traffic patterns detected on critical infrastructure",
+    severity: "HIGH",
+    status: "ACTIVE",
+    category: "SECURITY",
+    source: "Network Monitor",
+    location: "Data Center A",
+    threatScore: 0.75,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  {
+    _id: ObjectId(),
+    id: "alert-002", 
+    title: "Malware Signature Detected",
+    description: "Known malware signature found in email attachment",
+    severity: "CRITICAL",
+    status: "ACTIVE",
+    category: "MALWARE",
+    source: "Email Scanner",
+    location: "Email Gateway",
+    threatScore: 0.92,
+    createdAt: new Date(Date.now() - 3600000),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  {
+    _id: ObjectId(),
+    id: "alert-003",
+    title: "Failed Login Attempts",
+    description: "Multiple failed login attempts detected from external IP",
+    severity: "MEDIUM",
+    status: "ACKNOWLEDGED",
+    category: "AUTHENTICATION",
+    source: "Authentication Service",
+    location: "Login Portal",
+    threatScore: 0.45,
+    createdAt: new Date(Date.now() - 7200000),
+    updatedAt: new Date(),
+    acknowledged: true,
+    assignedTo: "security-team@ntews.com"
+  }
+]);
+
+// Create indexes for better performance
+db.alerts.createIndex({ "status": 1 });
+db.alerts.createIndex({ "severity": 1 });
+db.alerts.createIndex({ "createdAt": -1 });
+db.alerts.createIndex({ "category": 1 });
+db.alerts.createIndex({ "threatScore": -1 });
+
+// Create a simple view for active alerts
+db.createView("active_alerts", "alerts", [
+  { $match: { status: "ACTIVE" } }
+]);
+
+print("✅ NTEWS Alert Database initialized successfully!");
+print("📊 Sample alerts created: 3");
+print("🔍 Indexes created for performance");
+print("👁️  Active alerts view created");

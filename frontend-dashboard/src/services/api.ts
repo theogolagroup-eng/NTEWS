@@ -8,60 +8,118 @@ export const API_ENDPOINTS = {
   // Auth Service
   AUTH: {
     LOGIN: `${API_BASE_URL}/api/auth/login`,
-    REGISTER: `${API_BASE_URL}/api/auth/register`,
-    PROFILE: `${API_BASE_URL}/api/auth/profile`,
+    LOGOUT: `${API_BASE_URL}/api/auth/logout`,
+    VALIDATE: `${API_BASE_URL}/api/auth/validate`,
+    STATUS: `${API_BASE_URL}/api/auth/status`,
   },
   
   // Intelligence Service
   INTELLIGENCE: {
     DASHBOARD: `${API_BASE_URL}/api/intelligence/dashboard/summary`,
     REPORTS: `${API_BASE_URL}/api/intelligence/reports`,
-    ANALYZE: `${API_BASE_URL}/api/intelligence/analyze`,
+    REPORT: (id: string) => `${API_BASE_URL}/api/intelligence/reports/${id}`,
+    CREATE: `${API_BASE_URL}/api/intelligence/reports`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/intelligence/reports/${id}`,
+    VERIFY: (id: string) => `${API_BASE_URL}/api/intelligence/reports/${id}/verify`,
+    THREAT_TRENDS: `${API_BASE_URL}/api/intelligence/threat-trends`,
+    THREAT_MAP: `${API_BASE_URL}/api/intelligence/threat-map`,
   },
   
   // Alert Service
   ALERTS: {
     DASHBOARD: `${API_BASE_URL}/api/alerts/dashboard/summary`,
     ALL: `${API_BASE_URL}/api/alerts`,
+    ALERT: (id: string) => `${API_BASE_URL}/api/alerts/${id}`,
     CREATE: `${API_BASE_URL}/api/alerts`,
     UPDATE: (id: string) => `${API_BASE_URL}/api/alerts/${id}`,
-    DELETE: (id: string) => `${API_BASE_URL}/api/alerts/${id}`,
+    ACKNOWLEDGE: (id: string) => `${API_BASE_URL}/api/alerts/${id}/acknowledge`,
+    RESOLVE: (id: string) => `${API_BASE_URL}/api/alerts/${id}/resolve`,
+    ASSIGN: (id: string) => `${API_BASE_URL}/api/alerts/${id}/assign`,
+    ACTIVE: `${API_BASE_URL}/api/alerts/active`,
+    UNACKNOWLEDGED: `${API_BASE_URL}/api/alerts/unacknowledged`,
+    STATISTICS: `${API_BASE_URL}/api/alerts/statistics`,
+    // NLP Analysis
+    NLP_ANALYZE_TEXT: `${API_BASE_URL}/api/alerts/nlp/analyze-text`,
+    NLP_BATCH_ANALYZE: `${API_BASE_URL}/api/alerts/nlp/batch-analyze`,
+    NLP_CAPABILITIES: `${API_BASE_URL}/api/alerts/nlp/capabilities`,
+    NLP_ANALYZE_ALERT: (id: string) => `${API_BASE_URL}/api/alerts/${id}/nlp-analyze`,
   },
   
   // Prediction Service
   PREDICTIONS: {
     DASHBOARD: `${API_BASE_URL}/api/predictions/dashboard/summary`,
-    FORECAST: `${API_BASE_URL}/api/predictions/forecast`,
+    FORECASTS: `${API_BASE_URL}/api/predictions/forecasts`,
+    FORECAST: (id: string) => `${API_BASE_URL}/api/predictions/forecasts/${id}`,
+    CURRENT_FORECAST: `${API_BASE_URL}/api/predictions/forecasts/current`,
     HOTSPOTS: `${API_BASE_URL}/api/predictions/hotspots`,
+    HOTSPOT: (id: string) => `${API_BASE_URL}/api/predictions/hotspots/${id}`,
+    RISK_TRENDS: `${API_BASE_URL}/api/predictions/risk-trends`,
+    LOCATION_RISK: `${API_BASE_URL}/api/predictions/location-risk`,
+    GENERATE_FORECAST: `${API_BASE_URL}/api/predictions/generate-forecast`,
+    // AI Engine Integration
+    AI_ENGINE_HEALTH: `${API_BASE_URL}/api/ai-engine/health`,
+    AI_ENGINE_MODELS: `${API_BASE_URL}/api/ai-engine/models`,
+    AI_ENGINE_STATS: `${API_BASE_URL}/api/ai-engine/stats`,
+    AI_ENGINE_CAPABILITIES: `${API_BASE_URL}/api/ai-engine/capabilities`,
+    AI_ENGINE_PREDICTION_ANALYSIS: `${API_BASE_URL}/api/ai-engine/prediction-analysis`,
   },
   
   // Ingestion Service
   INGESTION: {
-    DATA_SOURCES: `${API_BASE_URL}/api/ingestion/sources`,
-    INGEST: `${API_BASE_URL}/api/ingestion/ingest`,
     STATUS: `${API_BASE_URL}/api/ingestion/status`,
+    SOCIAL_MEDIA: `${API_BASE_URL}/api/ingestion/social-media`,
+    CCTV: `${API_BASE_URL}/api/ingestion/cctv`,
+    CYBER_FEED: `${API_BASE_URL}/api/ingestion/cyber-feed`,
+    START_BATCH: `${API_BASE_URL}/api/ingestion/start-batch`,
   },
   
-  // AI Engine (through API Gateway for unified access)
+  // AI Engine (Direct access through Gateway)
   AI_ENGINE: {
-    BASE: `${API_BASE_URL}/api/ai-engine`,
-    PREDICT: `${API_BASE_URL}/api/ai-engine/predict`,
-    ANALYZE: `${API_BASE_URL}/api/ai-engine/analyze`,
-    HOTSPOTS: `${API_BASE_URL}/api/ai-engine/predict/hotspots`,
-    HEALTH: `${API_BASE_URL}/api/ai-engine/health`,
-    STATS: `${API_BASE_URL}/api/ai-engine/stats`,
-    MODELS: `${API_BASE_URL}/api/ai-engine/models`,
-    CAPABILITIES: `${API_BASE_URL}/api/ai-engine/capabilities`,
-    PREDICTION_ANALYSIS: `${API_BASE_URL}/api/ai-engine/prediction-analysis`
+    HEALTH: `${API_BASE_URL}/health`,
+    ROOT: `${API_BASE_URL}/root`,
+    ANALYZE: `${API_BASE_URL}/analyze`,
+    PREDICT: `${API_BASE_URL}/predict`,
+    PREDICT_HOTSPOTS: `${API_BASE_URL}/predict/hotspots`,
+    PREDICTION_ANALYSIS: `${API_BASE_URL}/prediction-analysis`,
+    STATS: `${API_BASE_URL}/stats`,
+    MODELS: `${API_BASE_URL}/models`,
+    CAPABILITIES: `${API_BASE_URL}/capabilities`,
+    // NLP Endpoints
+    NLP_ANALYZE_TEXT: `${API_BASE_URL}/nlp/analyze-text`,
+    NLP_ANALYZE_ALERT: `${API_BASE_URL}/nlp/analyze-alert`,
+    NLP_BATCH_ANALYZE: `${API_BASE_URL}/nlp/batch-analyze`,
+    NLP_CAPABILITIES: `${API_BASE_URL}/nlp/capabilities`,
   }
 };
 
-// API Client with error handling
+// API Client with error handling and authentication
 export class ApiClient {
   private baseUrl: string;
+  private authToken: string | null = null;
   
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
+  }
+  
+  // Authentication methods
+  setAuthToken(token: string) {
+    this.authToken = token;
+  }
+  
+  clearAuthToken() {
+    this.authToken = null;
+  }
+  
+  getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+    
+    return headers;
   }
   
   async request(endpoint: string, options: RequestInit = {}): Promise<any> {
@@ -70,14 +128,15 @@ export class ApiClient {
       
       const response = await fetch(url, {
         headers: {
-          'Content-Type': 'application/json',
+          ...this.getAuthHeaders(),
           ...options.headers,
         },
         ...options,
       });
       
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
       }
       
       return await response.json();
@@ -107,6 +166,39 @@ export class ApiClient {
   
   async delete(endpoint: string): Promise<any> {
     return this.request(endpoint, { method: 'DELETE' });
+  }
+  
+  // Authentication specific methods
+  async login(credentials: { username: string; password: string }): Promise<any> {
+    try {
+      const response = await this.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+      if (response.token) {
+        this.setAuthToken(response.token);
+      }
+      return response;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  }
+  
+  async logout(): Promise<any> {
+    try {
+      const response = await this.post(API_ENDPOINTS.AUTH.LOGOUT);
+      this.clearAuthToken();
+      return response;
+    } catch (error) {
+      console.error('Logout failed:', error);
+      this.clearAuthToken(); // Clear token even if request fails
+      throw error;
+    }
+  }
+  
+  async validateToken(): Promise<any> {
+    if (!this.authToken) {
+      throw new Error('No authentication token available');
+    }
+    return this.get(API_ENDPOINTS.AUTH.VALIDATE);
   }
 }
 

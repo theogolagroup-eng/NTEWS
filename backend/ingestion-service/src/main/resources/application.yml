@@ -1,18 +1,10 @@
 server:
-  port: 8085
+  port: 8084
 
 spring:
   application:
     name: ingestion-service
   
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.type.mapping: threat_data:com.ntews.ingestion.model.ThreatData,social_media_data:com.ntews.ingestion.model.SocialMediaData,cctv_data:com.ntews.ingestion.model.CCTVData
-    
   data:
     mongodb:
       uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DB:ntews_ingestion}

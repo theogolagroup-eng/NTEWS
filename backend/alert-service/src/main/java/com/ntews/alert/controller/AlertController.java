@@ -2,6 +2,7 @@ package com.ntews.alert.controller;
 
 import com.ntews.alert.model.Alert;
 import com.ntews.alert.service.AlertService;
+import com.ntews.alert.service.NLPAnalysisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/alerts")
@@ -22,6 +26,7 @@ import java.util.UUID;
 public class AlertController {
     
     private final AlertService alertService;
+    private final NLPAnalysisService nlpAnalysisService;
     
     @GetMapping
     public ResponseEntity<Page<Alert>> getAlerts(
@@ -104,7 +109,67 @@ public class AlertController {
         return ResponseEntity.ok(statistics);
     }
     
-    // DTOs
+    // NLP Analysis Endpoints
+    @PostMapping("/nlp/analyze-text")
+    public ResponseEntity<Map<String, Object>> analyzeTextThreat(@RequestBody Map<String, String> request) {
+        try {
+            String text = request.get("text");
+            String context = request.get("context");
+            
+            Map<String, Object> result = nlpAnalysisService.analyzeTextThreat(text, context);
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("Error analyzing text threat", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/nlp/batch-analyze")
+    public ResponseEntity<Map<String, Object>> batchAnalyzeTexts(@RequestBody List<Map<String, String>> requests) {
+        try {
+            Map<String, Object> result = nlpAnalysisService.batchAnalyzeTexts(requests);
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("Error in batch text analysis", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/nlp/capabilities")
+    public ResponseEntity<Map<String, Object>> getNLPCapabilities() {
+        try {
+            Map<String, Object> capabilities = nlpAnalysisService.getNLPCapabilities();
+            return ResponseEntity.ok(capabilities);
+            
+        } catch (Exception e) {
+            log.error("Error getting NLP capabilities", e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/{alertId}/nlp-analyze")
+    public ResponseEntity<Alert> analyzeAlertWithNLP(@PathVariable String alertId) {
+        try {
+            Alert alert = alertService.getAlertById(alertId);
+            if (alert == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Alert analyzedAlert = nlpAnalysisService.analyzeAlertWithNLP(alert);
+            Alert savedAlert = alertService.updateAlert(analyzedAlert);
+            
+            log.info("NLP analysis completed for alert: {}", alertId);
+            return ResponseEntity.ok(savedAlert);
+            
+        } catch (Exception e) {
+            log.error("Error analyzing alert with NLP", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    // Essential DTOs only - removed redundant ones
     public static class ResolutionRequest {
         private String resolutionNotes;
         
@@ -119,6 +184,7 @@ public class AlertController {
         public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
     }
     
+    // Simplified Dashboard Summary
     public static class AlertDashboardSummary {
         private int totalAlerts;
         private int activeAlerts;
@@ -127,14 +193,16 @@ public class AlertController {
         private int highAlerts;
         private int mediumAlerts;
         private int lowAlerts;
-        private List<AlertSeverityCount> severityCounts;
-        private List<RecentAlert> recentAlerts;
         
         // AI Engine integration fields
         private int highConfidenceAlerts;
         private Map<String, Long> aiRiskLevels;
         private double averageAiConfidence;
         private boolean aiEngineHealthy;
+        
+        // Additional fields for dashboard
+        private Map<String, Integer> severityCounts;
+        private List<RecentAlert> recentAlerts;
         
         // Getters and setters
         public int getTotalAlerts() { return totalAlerts; }
@@ -151,12 +219,6 @@ public class AlertController {
         public void setMediumAlerts(int mediumAlerts) { this.mediumAlerts = mediumAlerts; }
         public int getLowAlerts() { return lowAlerts; }
         public void setLowAlerts(int lowAlerts) { this.lowAlerts = lowAlerts; }
-        public List<AlertSeverityCount> getSeverityCounts() { return severityCounts; }
-        public void setSeverityCounts(List<AlertSeverityCount> severityCounts) { this.severityCounts = severityCounts; }
-        public List<RecentAlert> getRecentAlerts() { return recentAlerts; }
-        public void setRecentAlerts(List<RecentAlert> recentAlerts) { this.recentAlerts = recentAlerts; }
-        
-        // AI Engine integration getters and setters
         public int getHighConfidenceAlerts() { return highConfidenceAlerts; }
         public void setHighConfidenceAlerts(int highConfidenceAlerts) { this.highConfidenceAlerts = highConfidenceAlerts; }
         public Map<String, Long> getAiRiskLevels() { return aiRiskLevels; }
@@ -165,46 +227,29 @@ public class AlertController {
         public void setAverageAiConfidence(double averageAiConfidence) { this.averageAiConfidence = averageAiConfidence; }
         public boolean isAiEngineHealthy() { return aiEngineHealthy; }
         public void setAiEngineHealthy(boolean aiEngineHealthy) { this.aiEngineHealthy = aiEngineHealthy; }
-    }
-    
-    public static class AlertSeverityCount {
-        private String severity;
-        private int count;
         
-        public AlertSeverityCount(String severity, int count) {
-            this.severity = severity;
-            this.count = count;
+        // Additional methods for dashboard summary
+        public List<AlertSeverityCount> getSeverityCounts() { 
+            return severityCounts != null ? new ArrayList<>() : new ArrayList<>(severityCounts.entrySet().stream()
+                .map(entry -> new AlertSeverityCount(entry.getKey(), entry.getValue().intValue()))
+                .collect(Collectors.toList()));
         }
         
-        public String getSeverity() { return severity; }
-        public int getCount() { return count; }
-    }
-    
-    public static class RecentAlert {
-        private String id;
-        private String title;
-        private String severity;
-        private String status;
-        private LocalDateTime timestamp;
-        private String location;
-        
-        public RecentAlert(String id, String title, String severity, String status, LocalDateTime timestamp, String location) {
-            this.id = id;
-            this.title = title;
-            this.severity = severity;
-            this.status = status;
-            this.timestamp = timestamp;
-            this.location = location;
+        public void setSeverityCounts(List<AlertSeverityCount> severityCounts) { 
+            this.severityCounts = severityCounts != null ? new HashMap<>() : severityCounts.stream()
+                .collect(Collectors.toMap(AlertSeverityCount::getSeverity, AlertSeverityCount::getCount));
         }
         
-        public String getId() { return id; }
-        public String getTitle() { return title; }
-        public String getSeverity() { return severity; }
-        public String getStatus() { return status; }
-        public LocalDateTime getTimestamp() { return timestamp; }
-        public String getLocation() { return location; }
+        public List<RecentAlert> getRecentAlerts() {
+            return recentAlerts != null ? new ArrayList<>() : new ArrayList<>(recentAlerts);
+        }
+        
+        public void setRecentAlerts(List<RecentAlert> recentAlerts) {
+            this.recentAlerts = recentAlerts;
+        }
     }
     
+    // Simplified Statistics
     public static class AlertStatistics {
         private List<AlertTrend> trends;
         private List<AlertHourlyCount> hourlyCounts;
@@ -262,5 +307,43 @@ public class AlertController {
         
         public String getCategory() { return category; }
         public int getCount() { return count; }
+    }
+    
+    public static class AlertSeverityCount {
+        private String severity;
+        private int count;
+        
+        public AlertSeverityCount(String severity, int count) {
+            this.severity = severity;
+            this.count = count;
+        }
+        
+        public String getSeverity() { return severity; }
+        public int getCount() { return count; }
+    }
+    
+    public static class RecentAlert {
+        private String id;
+        private String title;
+        private String severity;
+        private String status;
+        private LocalDateTime timestamp;
+        private String location;
+        
+        public RecentAlert(String id, String title, String severity, String status, LocalDateTime timestamp, String location) {
+            this.id = id;
+            this.title = title;
+            this.severity = severity;
+            this.status = status;
+            this.timestamp = timestamp;
+            this.location = location;
+        }
+        
+        public String getId() { return id; }
+        public String getTitle() { return title; }
+        public String getSeverity() { return severity; }
+        public String getStatus() { return status; }
+        public LocalDateTime getTimestamp() { return timestamp; }
+        public String getLocation() { return location; }
     }
 }

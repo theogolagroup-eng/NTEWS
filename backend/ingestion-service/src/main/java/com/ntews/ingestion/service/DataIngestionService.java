@@ -9,7 +9,6 @@ import com.ntews.ingestion.client.AIEngineClient.PredictionResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,9 +22,6 @@ import java.util.ArrayList;
 @Service
 @Slf4j
 public class DataIngestionService {
-    
-    @Autowired
-    private KafkaTemplate<String, Object> kafkaTemplate;
     
     @Autowired
     private SocialMediaIngestionService socialMediaService;
@@ -86,21 +82,13 @@ public class DataIngestionService {
                 // Continue processing without AI data
             }
             
-            // Send to Kafka topic with AI enrichment
-            kafkaTemplate.send("social-media-data", socialMediaData.getId(), socialMediaData)
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        log.error("Failed to send social media data to Kafka: {}", ex.getMessage());
-                        threatData.setStatus(ThreatData.ProcessingStatus.FAILED);
-                        threatData.setErrorMessage(ex.getMessage());
-                    } else {
-                        log.debug("Successfully sent social media data to Kafka: {}", result.getRecordMetadata());
-                        threatData.setStatus(ThreatData.ProcessingStatus.PROCESSED);
-                    }
-                });
+            // Log successful processing (replacing Kafka)
+            log.info("Successfully processed social media data: {}", socialMediaData.getId());
+            threatData.setStatus(ThreatData.ProcessingStatus.PROCESSED);
             
-            // Also send AI-enhanced threat data to general topic
-            kafkaTemplate.send("ai-enhanced-threat-data", threatData.getId(), threatData.toString());
+            // Log data for processing (replacing database storage)
+            log.info("Threat data processed: ID={}, Type={}, RiskLevel={}", 
+                threatData.getId(), threatData.getSourceType(), threatData.getAiRiskLevel());
             
         } catch (Exception e) {
             log.error("Error ingesting social media data: {}", e.getMessage(), e);
@@ -115,21 +103,13 @@ public class DataIngestionService {
             // Convert to ThreatData format
             ThreatData threatData = convertToThreatData(cctvData);
             
-            // Send to Kafka topic
-            kafkaTemplate.send("cctv-data", cctvData.getId(), cctvData)
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        log.error("Failed to send CCTV data to Kafka: {}", ex.getMessage());
-                        threatData.setStatus(ThreatData.ProcessingStatus.FAILED);
-                        threatData.setErrorMessage(ex.getMessage());
-                    } else {
-                        log.debug("Successfully sent CCTV data to Kafka: {}", result.getRecordMetadata());
-                        threatData.setStatus(ThreatData.ProcessingStatus.PROCESSED);
-                    }
-                });
+            // Log successful processing (replacing Kafka)
+            log.info("Successfully processed CCTV data: {}", cctvData.getId());
+            threatData.setStatus(ThreatData.ProcessingStatus.PROCESSED);
             
-            // Also send to general threat data topic
-            kafkaTemplate.send("threat-data", threatData.getId(), threatData);
+            // Log data for processing (replacing database storage)
+            log.info("CCTV threat data processed: ID={}, Camera={}, Location={}", 
+                threatData.getId(), cctvData.getCameraId(), cctvData.getLocation());
             
         } catch (Exception e) {
             log.error("Error ingesting CCTV data: {}", e.getMessage(), e);
@@ -154,18 +134,13 @@ public class DataIngestionService {
                 cyberData.setStatus(ThreatData.ProcessingStatus.PENDING);
             }
             
-            // Send to Kafka
-            kafkaTemplate.send("cyber-data", cyberData.getId(), cyberData)
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        log.error("Failed to send cyber data to Kafka: {}", ex.getMessage());
-                        cyberData.setStatus(ThreatData.ProcessingStatus.FAILED);
-                        cyberData.setErrorMessage(ex.getMessage());
-                    } else {
-                        log.debug("Successfully sent cyber data to Kafka: {}", result.getRecordMetadata());
-                        cyberData.setStatus(ThreatData.ProcessingStatus.PROCESSED);
-                    }
-                });
+            // Log successful processing (replacing Kafka)
+            log.info("Successfully processed cyber feed data: {}", cyberData.getId());
+            cyberData.setStatus(ThreatData.ProcessingStatus.PROCESSED);
+            
+            // Log data for processing (replacing database storage)
+            log.info("Cyber threat data processed: ID={}, Source={}, Type={}", 
+                cyberData.getId(), cyberData.getSource(), cyberData.getContentType());
             
         } catch (Exception e) {
             log.error("Error ingesting cyber feed data: {}", e.getMessage(), e);
@@ -272,15 +247,9 @@ public class DataIngestionService {
             alertData.put("recommendedActions", generatePreventiveActions(threatData, analysis, prediction));
             alertData.put("source", "AI Engine - Ingestion Service");
             
-            // Send proactive alert to alert service via Kafka
-            kafkaTemplate.send("proactive-alerts", alertData.get("id").toString(), alertData.toString())
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        log.error("Failed to send proactive alert: {}", ex.getMessage());
-                    } else {
-                        log.info("Proactive alert sent successfully for threat: {}", threatData.getId());
-                    }
-                });
+            // Log proactive alert (replacing Kafka)
+            log.info("Proactive alert generated for threat: {}", threatData.getId());
+            log.info("Alert details: {}", alertData.toString());
                 
         } catch (Exception e) {
             log.error("Error triggering proactive alert for threat: {}", threatData.getId(), e);

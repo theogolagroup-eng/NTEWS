@@ -7,9 +7,12 @@ uvicorn>=0.24.0
 pydantic>=2.4.0
 python-multipart>=0.0.6
 
-# Basic ML Libraries (for future enhancements)
+# Basic ML Libraries
 numpy>=1.24.0
 pandas>=2.0.0
+scikit-learn>=1.3.0
+torch>=2.0.0
+transformers>=4.35.0
 
 # Development (optional)
 pytest>=7.4.0

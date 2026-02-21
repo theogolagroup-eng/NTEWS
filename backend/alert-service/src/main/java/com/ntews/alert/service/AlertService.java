@@ -17,6 +17,8 @@ public interface AlertService {
     
     Optional<Alert> getAlert(String id);
     
+    Alert getAlertById(String alertId);
+    
     Alert createAlert(Alert alert);
     
     Alert updateAlert(Alert alert);

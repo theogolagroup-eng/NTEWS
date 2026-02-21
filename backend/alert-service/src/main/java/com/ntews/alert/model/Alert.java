@@ -48,6 +48,17 @@ public class Alert {
     private String createdBy;
     private String assignedTo;
     
+    // NLP Analysis fields
+    private Double nlpRiskScore;
+    private String nlpClassification;
+    private Double nlpConfidence;
+    private List<String> threatKeywords;
+    private Map<String, Object> sentimentScores;
+    private List<String> nlpRecommendations;
+    private Double combinedRiskScore;
+    private String priorityRecommendation;
+    private LocalDateTime nlpAnalyzedAt;
+    
     // AI Engine integration fields
     private Double aiConfidence;
     private Double aiThreatScore;
