@@ -91,13 +91,13 @@ alerts:
     
     escalation:
       levels:
-        - level_1: 5 minutes
-        - level_2: 15 minutes
-        - level_3: 30 minutes
-        - level_4: 1 hour
+        - level_1: 30 minutes    # Initial response
+        - level_2: 2 hours       # Supervisor notification
+        - level_3: 6 hours       # Management escalation
+        - level_4: 24 hours      # Director/Agency head
   
   deduplication:
-    window: 300000  # 5 minutes
+    window: 1800000  # 30 minutes - realistic time to process similar alerts
     similarity-threshold: 0.8
 
 # Email Configuration

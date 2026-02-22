@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @Configuration
 @RequiredArgsConstructor
@@ -34,7 +35,7 @@ public class DataInitializer {
             List<Alert> historicalAlerts = Arrays.asList(
                 // Social Media Protest Detection (from real patterns)
                 Alert.builder()
-                    .id("alert-social-001")
+                    .id(UUID.randomUUID().toString())
                     .title("Social Media Protest Planning - Uhuru Park")
                     .description("AI analysis detected coordinated social media activity indicating planned protest at Uhuru Park. Pattern matches historical protest coordination with 89% confidence. Keywords: 'gather', 'uhuru', 'tomorrow', 'rights', detected across Twitter, Facebook, Telegram.")
                     .severity(Alert.Severity.HIGH)
@@ -58,7 +59,7 @@ public class DataInitializer {
                     
                 // Border Invasion Forecast (from historical patterns)
                 Alert.builder()
-                    .id("alert-border-001")
+                    .id(UUID.randomUUID().toString())
                     .title("Cross-Border Security Threat - Mandera Region")
                     .description("ML model analyzing 18,529 historical data points predicts 73% probability of cross-border security incident within 48 hours. Pattern matches previous infiltration attempts along Kenya-Somalia border during similar seasonal conditions.")
                     .severity(Alert.Severity.CRITICAL)
@@ -82,7 +83,7 @@ public class DataInitializer {
                     
                 // Traffic Disruption Threat (from real patterns)
                 Alert.builder()
-                    .id("alert-traffic-001")
+                    .id(UUID.randomUUID().toString())
                     .title("Traffic Disruption Threat - Historical Pattern Match")
                     .description("AI analysis of traffic patterns from 2022-2024 data indicates 82% probability of major traffic disruption on Thika Road during upcoming political rally. Historical data shows similar disruptions during previous events.")
                     .severity(Alert.Severity.MEDIUM)
@@ -100,13 +101,13 @@ public class DataInitializer {
                     .source("AI Traffic Pattern Analysis")
                     .confidence(0.86)
                     .aiConfidence(0.82)
-                    .createdAt(LocalDateTime.now().minusHours(1))
-                    .updatedAt(LocalDateTime.now().minusHours(1))
+                    .createdAt(LocalDateTime.now().minusMinutes(15))
+                    .updatedAt(LocalDateTime.now().minusMinutes(10))
                     .build(),
                     
                 // Cyber Attack Prediction (from historical patterns)
                 Alert.builder()
-                    .id("alert-cyber-001")
+                    .id(UUID.randomUUID().toString())
                     .title("Cyber Attack Prediction - Historical Pattern Analysis")
                     .description("ML model analyzing 3,247 historical cyber incidents predicts 78% probability of targeted attack on government infrastructure within 24 hours. Pattern matches previous state-sponsored attacks during similar political climate.")
                     .severity(Alert.Severity.HIGH)
@@ -124,13 +125,13 @@ public class DataInitializer {
                     .source("AI Cyber Threat Intelligence")
                     .confidence(0.88)
                     .aiConfidence(0.85)
-                    .createdAt(LocalDateTime.now().minusHours(3))
-                    .updatedAt(LocalDateTime.now().minusHours(2))
+                    .createdAt(LocalDateTime.now().minusMinutes(45))
+                    .updatedAt(LocalDateTime.now().minusMinutes(30))
                     .build(),
                     
                 // Flood Risk Prediction (from seasonal patterns)
                 Alert.builder()
-                    .id("alert-weather-001")
+                    .id(UUID.randomUUID().toString())
                     .title("Flood Risk Prediction - Historical Weather Patterns")
                     .description("AI analysis of 5-year historical weather data predicts 76% probability of flooding in Kibera and Mathare areas within 48 hours. Pattern matches previous flood events during similar rainfall patterns and seasonal conditions.")
                     .severity(Alert.Severity.MEDIUM)
