@@ -192,11 +192,17 @@ public class AlertServiceImpl implements AlertService {
         summary.setTotalAlerts((int) totalAlerts);
         
         try {
-            // Get active alerts with null safety - use corrected query
-            List<Alert> activeAlerts = alertRepository.findActiveAlertsOnly();
-            if (activeAlerts == null) {
-                activeAlerts = new ArrayList<>();
+            // Get all alerts and filter in memory (like working frontend approach)
+            List<Alert> allAlerts = alertRepository.findAll();
+            if (allAlerts == null) {
+                allAlerts = new ArrayList<>();
             }
+            
+            // Filter active alerts in memory
+            List<Alert> activeAlerts = allAlerts.stream()
+                    .filter(alert -> alert != null && alert.getStatus() != null && 
+                                   alert.getStatus().getValue().equals("active"))
+                    .collect(Collectors.toList());
             
             summary.setActiveAlerts(activeAlerts.size());
             
@@ -226,7 +232,7 @@ public class AlertServiceImpl implements AlertService {
             
             summary.setSeverityCounts(severityCountList);
         
-        // Get recent alerts with null safety
+        // Get recent alerts with null safety - use active alerts from memory
             List<RecentAlert> recentAlerts = activeAlerts.stream()
                     .filter(alert -> alert != null && alert.getCreatedAt() != null)
                     .sorted((a1, a2) -> a2.getCreatedAt().compareTo(a1.getCreatedAt()))
@@ -261,12 +267,12 @@ public class AlertServiceImpl implements AlertService {
     
     @Override
     public List<Alert> getActiveAlerts() {
-        return alertRepository.findActiveAlertsOnly();
+        return alertRepository.findByStatus(Alert.AlertStatus.ACTIVE.getValue());
     }
     
     @Override
     public List<Alert> getUnacknowledgedAlerts() {
-        return alertRepository.findActiveAlertsOnly().stream()
+        return alertRepository.findByStatus(Alert.AlertStatus.ACTIVE.getValue()).stream()
                 .filter(alert -> alert.getStatus() == Alert.AlertStatus.ACTIVE)
                 .collect(Collectors.toList());
     }
@@ -811,5 +817,15 @@ public class AlertServiceImpl implements AlertService {
             case "low": return Alert.Priority.LOW;
             default: return Alert.Priority.NORMAL;
         }
+    }
+    
+    @Override
+    public void deleteAllAlerts() {
+        alertRepository.deleteAll();
+    }
+    
+    @Override
+    public List<Alert> getAllAlerts() {
+        return alertRepository.findAll();
     }
 }

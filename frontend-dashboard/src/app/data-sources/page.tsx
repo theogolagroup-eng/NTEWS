@@ -1,7 +1,7 @@
 'use client';
 
-import Dashboard from '@/pages/Dashboard';
+import DataSourcesPage from '@/pages/DataSourcesPage';
 
 export default function DataSourcesRoute() {
-  return <Dashboard />;
+  return <DataSourcesPage />;
 }

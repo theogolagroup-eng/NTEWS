@@ -45,6 +45,29 @@ export const API_ENDPOINTS = {
     NLP_ANALYZE_ALERT: (id: string) => `${API_BASE_URL}/api/alerts/${id}/nlp-analyze`,
   },
   
+  // Action Points Service (integrated with Alert Service)
+  ACTION_POINTS: {
+    ALL: `${API_BASE_URL}/api/action-points`,
+    ACTION_POINT: (id: string) => `${API_BASE_URL}/api/action-points/${id}`,
+    CREATE: `${API_BASE_URL}/api/action-points`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/action-points/${id}`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/action-points/${id}`,
+    ASSIGN: (id: string) => `${API_BASE_URL}/api/action-points/${id}/assign`,
+    COMPLETE: (id: string) => `${API_BASE_URL}/api/action-points/${id}/complete`,
+    APPROVE: (id: string) => `${API_BASE_URL}/api/action-points/${id}/approve`,
+    REJECT: (id: string) => `${API_BASE_URL}/api/action-points/${id}/reject`,
+    BY_STATUS: (status: string) => `${API_BASE_URL}/api/action-points/status/${status}`,
+    BY_ASSIGNEE: (assignee: string) => `${API_BASE_URL}/api/action-points/assigned/${assignee}`,
+    BY_PRIORITY: (priority: string) => `${API_BASE_URL}/api/action-points/priority/${priority}`,
+    SEARCH: `${API_BASE_URL}/api/action-points/search`,
+    FOR_ALERT: (alertId: string) => `${API_BASE_URL}/api/action-points/alert/${alertId}`,
+    TRIGGER_FOR_ALERT: (alertId: string) => `${API_BASE_URL}/api/action-points/alert/${alertId}/trigger`,
+    DASHBOARD_SUMMARY: `${API_BASE_URL}/api/action-points/dashboard/summary`,
+    RECENT: `${API_BASE_URL}/api/action-points/recent`,
+    AI_RECOMMENDATION: (id: string) => `${API_BASE_URL}/api/action-points/${id}/ai-recommendation`,
+    APPLY_AI_RECOMMENDATION: (id: string) => `${API_BASE_URL}/api/action-points/${id}/apply-ai-recommendation`,
+  },
+  
   // Prediction Service
   PREDICTIONS: {
     DASHBOARD: `${API_BASE_URL}/api/predictions/dashboard/summary`,

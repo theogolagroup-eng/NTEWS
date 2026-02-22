@@ -149,6 +149,46 @@ public class AlertController {
         }
     }
     
+    @DeleteMapping("/clear")
+    public ResponseEntity<String> clearAllAlerts() {
+        try {
+            alertService.deleteAllAlerts();
+            return ResponseEntity.ok("All alerts cleared successfully");
+        } catch (Exception e) {
+            log.error("Error clearing alerts", e);
+            return ResponseEntity.internalServerError().body("Failed to clear alerts: " + e.getMessage());
+        }
+    }
+    
+    @GetMapping("/debug")
+    public ResponseEntity<Map<String, Object>> debugAlerts() {
+        try {
+            List<Alert> allAlerts = alertService.getAllAlerts();
+            List<Alert> activeAlerts = alertService.getActiveAlerts();
+            
+            Map<String, Object> debug = new HashMap<>();
+            debug.put("totalAlerts", allAlerts.size());
+            debug.put("activeAlerts", activeAlerts.size());
+            debug.put("allAlerts", allAlerts.stream().map(alert -> {
+                Map<String, Object> alertMap = new HashMap<>();
+                alertMap.put("id", alert.getId());
+                alertMap.put("title", alert.getTitle());
+                alertMap.put("severity", alert.getSeverity());
+                alertMap.put("priority", alert.getPriority());
+                alertMap.put("status", alert.getStatus());
+                alertMap.put("statusValue", alert.getStatus() != null ? alert.getStatus().getValue() : null);
+                alertMap.put("location", alert.getLocation());
+                alertMap.put("timestamp", alert.getTimestamp());
+                return alertMap;
+            }).collect(Collectors.toList()));
+            
+            return ResponseEntity.ok(debug);
+        } catch (Exception e) {
+            log.error("Error debugging alerts", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
     @PostMapping("/{alertId}/nlp-analyze")
     public ResponseEntity<Alert> analyzeAlertWithNLP(@PathVariable String alertId) {
         try {

@@ -50,5 +50,12 @@ public interface AlertService {
     Alert generateProactiveAlert(Map<String, Object> threatData, Map<String, Object> aiAnalysis, Map<String, Object> prediction);
     void updateAlertWithAIAnalysis(String alertId, Map<String, Object> aiAnalysis);
     List<Alert> getAIEnhancedAlerts();
+    
+    List<Alert> getRecentAlerts(int limit);
+    
     AlertDashboardSummary getAIDashboardSummary();
+    
+    void deleteAllAlerts();
+    
+    List<Alert> getAllAlerts();
 }

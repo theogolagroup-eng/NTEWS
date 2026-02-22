@@ -1,4 +1,6 @@
 import AppShell from '@/components/layout/AppShell';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ActionPointsProvider } from '@/contexts/ActionPointsContext';
 
 export default function RootLayout({
   children,
@@ -14,9 +16,13 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body>
-        <AppShell>
-          {children}
-        </AppShell>
+        <ThemeProvider>
+          <ActionPointsProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </ActionPointsProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

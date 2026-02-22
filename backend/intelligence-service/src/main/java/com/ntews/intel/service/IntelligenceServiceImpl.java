@@ -51,47 +51,63 @@ public class IntelligenceServiceImpl implements IntelligenceService {
     
     @Override
     public IntelligenceReport createIntelligenceReport(IntelligenceReport report) {
-        report.setId(UUID.randomUUID().toString());
-        report.setCreatedAt(LocalDateTime.now());
-        report.setUpdatedAt(LocalDateTime.now());
-        
-        if (report.getStatus() == null) {
-            report.setStatus(IntelligenceReport.ReportStatus.DRAFT);
-        }
-        
-        // Use AI Engine to analyze the report
         try {
-            String reportData = String.format("Title: %s, Content: %s, Category: %s", 
-                report.getTitle(), report.getContent(), report.getCategory());
-            
-            Map<String, Object> aiAnalysis = aiEngineClient.analyzeThreat(reportData);
-            
-            // Update report with AI analysis
-            if (aiAnalysis != null) {
-                report.setAiConfidence(((Number) aiAnalysis.getOrDefault("confidence", 0.5)).doubleValue());
-                report.setAiThreatLevel((String) aiAnalysis.getOrDefault("threat_level", "medium"));
-                report.setAiRiskScore(((Number) aiAnalysis.getOrDefault("risk_score", 50)).intValue());
-                
-                @SuppressWarnings("unchecked")
-                List<String> recommendations = (List<String>) aiAnalysis.getOrDefault("recommendations", 
-                    Arrays.asList("Monitor situation", "Gather more intelligence"));
-                report.setAiRecommendations(String.join("; ", recommendations));
-                
-                log.info("AI analysis completed for report: {}", report.getId());
+            if (report == null) {
+                throw new IllegalArgumentException("Intelligence report cannot be null");
             }
+            
+            report.setId(UUID.randomUUID().toString());
+            report.setCreatedAt(LocalDateTime.now());
+            report.setUpdatedAt(LocalDateTime.now());
+            
+            if (report.getStatus() == null) {
+                report.setStatus(IntelligenceReport.ReportStatus.DRAFT);
+            }
+            
+            // Use AI Engine to analyze the report with null safety
+            try {
+                String reportData = String.format("Title: %s, Content: %s, Category: %s", 
+                    report.getTitle() != null ? report.getTitle() : "",
+                    report.getContent() != null ? report.getContent() : "",
+                    report.getCategory() != null ? report.getCategory().toString() : "");
+                
+                Map<String, Object> aiAnalysis = aiEngineClient.analyzeThreat(reportData);
+                
+                // Update report with AI analysis with null safety
+                if (aiAnalysis != null) {
+                    report.setAiConfidence(((Number) aiAnalysis.getOrDefault("confidence", 0.5)).doubleValue());
+                    report.setAiThreatLevel((String) aiAnalysis.getOrDefault("threat_level", "medium"));
+                    report.setAiRiskScore(((Number) aiAnalysis.getOrDefault("risk_score", 50)).intValue());
+                    
+                    @SuppressWarnings("unchecked")
+                    List<String> recommendations = (List<String>) aiAnalysis.getOrDefault("recommendations", 
+                        Arrays.asList("Monitor situation", "Gather more intelligence"));
+                    report.setAiRecommendations(String.join("; ", recommendations));
+                }
+            } catch (Exception aiError) {
+                log.warn("AI analysis failed for intelligence report {}: {}", report.getId(), aiError.getMessage());
+                // Set default AI values
+                report.setAiConfidence(0.5);
+                report.setAiThreatLevel("medium");
+                report.setAiRiskScore(50);
+                report.setAiRecommendations("Monitor situation; Gather more intelligence");
+            }
+            
+            log.info("AI analysis completed for report: {}", report.getId());
+            
         } catch (Exception e) {
-            log.warn("AI analysis failed for report {}, using defaults: {}", report.getId(), e.getMessage());
-            // Set default values if AI analysis fails
-            report.setAiConfidence(0.5);
-            report.setAiThreatLevel("medium");
-            report.setAiRiskScore(50);
-            report.setAiRecommendations("Monitor situation; Gather more intelligence");
+            log.error("Error creating intelligence report: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to create intelligence report", e);
         }
         
-        IntelligenceReport savedReport = intelligenceReportRepository.save(report);
-        log.info("Created intelligence report: {}", savedReport.getId());
-        
-        return savedReport;
+        try {
+            IntelligenceReport savedReport = intelligenceReportRepository.save(report);
+            log.info("Created intelligence report: {}", savedReport.getId());
+            return savedReport;
+        } catch (Exception saveError) {
+            log.error("Error saving intelligence report: {}", saveError.getMessage());
+            throw new RuntimeException("Failed to save intelligence report", saveError);
+        }
     }
     
     @Override

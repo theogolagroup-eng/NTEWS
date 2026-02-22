@@ -5,6 +5,10 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,7 +30,7 @@ public interface RiskForecastRepository extends MongoRepository<RiskForecast, St
     List<RiskForecast> findValidForecasts(LocalDateTime dateTime);
     
     @Query("{ 'validFrom': { $lte: ?0 }, 'validTo': { $gte: ?0 } }")
-    RiskForecast findLatestValidForecast(LocalDateTime dateTime);
+    List<RiskForecast> findLatestValidForecasts(LocalDateTime dateTime);
     
     @Query("{ 'forecastType': 'hotspot', 'validFrom': { $lte: ?0 }, 'validTo': { $gte: ?0 } }")
     List<RiskForecast> findValidHotspotForecasts(LocalDateTime dateTime);

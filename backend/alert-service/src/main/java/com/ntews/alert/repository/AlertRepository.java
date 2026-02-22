@@ -30,7 +30,7 @@ public interface AlertRepository extends MongoRepository<Alert, String> {
     @Query("{ 'status': { $ne: 'resolved' }, 'status': { $ne: 'closed' } }")
     List<Alert> findActiveAlerts();
     
-    @Query("{ 'status.value': 'active' }")
+    @Query("{ 'status': 'active' }")
     List<Alert> findActiveAlertsOnly();
     
     @Query("{ 'status': 'active', 'severity': { $in: ?0 } }")

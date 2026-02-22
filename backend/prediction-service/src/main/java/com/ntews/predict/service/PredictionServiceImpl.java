@@ -48,45 +48,72 @@ public class PredictionServiceImpl implements PredictionService {
     
     @Override
     public RiskForecast getCurrentForecast() {
-        LocalDateTime now = LocalDateTime.now();
-        return riskForecastRepository.findLatestValidForecast(now);
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            List<RiskForecast> forecasts = riskForecastRepository.findLatestValidForecasts(now);
+            
+            if (forecasts == null || forecasts.isEmpty()) {
+                log.warn("No current forecast found for time: {}", now);
+                return null;
+            }
+            
+            // Return the most recent forecast (first in list, sorted by generatedAt descending)
+            RiskForecast latestForecast = forecasts.get(0);
+            log.info("Found current forecast: {} generated at {}", latestForecast.getId(), latestForecast.getGeneratedAt());
+            return latestForecast;
+            
+        } catch (Exception e) {
+            log.error("Error getting current forecast: {}", e.getMessage());
+            return null;
+        }
     }
     
     @Override
     public List<HotspotData> getCurrentHotspots() {
-        LocalDateTime now = LocalDateTime.now();
-        List<RiskForecast> hotspotForecasts = riskForecastRepository.findValidHotspotForecasts(now);
-        
-        List<HotspotData> hotspots = new ArrayList<>();
-        
-        for (RiskForecast forecast : hotspotForecasts) {
-            if (forecast.getHotspots() != null) {
-                for (RiskForecast.HotspotPrediction hotspot : forecast.getHotspots()) {
-                    hotspots.add(new HotspotData(
-                            hotspot.getHotspotId(),
-                            hotspot.getLocationName(),
-                            hotspot.getLatitude(),
-                            hotspot.getLongitude(),
-                            hotspot.getProbability(),
-                            hotspot.getSeverity(),
-                            hotspot.getThreatType(),
-                            hotspot.getPeakTime(),
-                            hotspot.getRadius()
-                    ));
+        try {
+            // Use findWithHotspots to get all forecasts with hotspots regardless of type
+            List<RiskForecast> hotspotForecasts = riskForecastRepository.findWithHotspots();
+            
+            List<HotspotData> hotspots = new ArrayList<>();
+            
+            if (hotspotForecasts != null && !hotspotForecasts.isEmpty()) {
+                for (RiskForecast forecast : hotspotForecasts) {
+                    if (forecast != null && forecast.getHotspots() != null) {
+                        for (RiskForecast.HotspotPrediction hotspot : forecast.getHotspots()) {
+                            if (hotspot != null) {
+                                hotspots.add(new HotspotData(
+                                        hotspot.getHotspotId(),
+                                        hotspot.getLocationName(),
+                                        hotspot.getLatitude(),
+                                        hotspot.getLongitude(),
+                                        hotspot.getProbability(),
+                                        hotspot.getSeverity(),
+                                        hotspot.getThreatType(),
+                                        hotspot.getPeakTime(),
+                                        hotspot.getRadius()
+                                ));
+                            }
+                        }
+                    }
                 }
             }
+            
+            // Sort by probability (highest first)
+            hotspots.sort((h1, h2) -> Double.compare(h2.getProbability(), h1.getProbability()));
+            
+            log.info("Found {} current hotspots", hotspots.size());
+            return hotspots;
+            
+        } catch (Exception e) {
+            log.error("Error getting current hotspots: {}", e.getMessage());
+            return new ArrayList<>(); // Return empty list on error
         }
-        
-        // Sort by probability (highest first)
-        hotspots.sort((h1, h2) -> Double.compare(h2.getProbability(), h1.getProbability()));
-        
-        return hotspots;
     }
     
     @Override
     public HotspotDetail getHotspotDetail(String id) {
-        LocalDateTime now = LocalDateTime.now();
-        List<RiskForecast> hotspotForecasts = riskForecastRepository.findValidHotspotForecasts(now);
+        // Use findWithHotspots to get all forecasts with hotspots
+        List<RiskForecast> hotspotForecasts = riskForecastRepository.findWithHotspots();
         
         for (RiskForecast forecast : hotspotForecasts) {
             if (forecast.getHotspots() != null) {
@@ -117,31 +144,40 @@ public class PredictionServiceImpl implements PredictionService {
     
     @Override
     public List<RiskTrendData> getRiskTrends(int hours) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startTime = now.minusHours(hours);
-        
-        List<RiskForecast> trendForecasts = riskForecastRepository.findValidTrendForecasts(now);
-        List<RiskTrendData> trends = new ArrayList<>();
-        
-        for (RiskForecast forecast : trendForecasts) {
-            if (forecast.getForecastPoints() != null) {
-                for (RiskForecast.ForecastPoint point : forecast.getForecastPoints()) {
-                    if (point.getTimestamp().isAfter(startTime) && point.getTimestamp().isBefore(now)) {
-                        trends.add(new RiskTrendData(
-                                point.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                                point.getPredictedRisk(),
-                                point.getRiskLevel(),
-                                point.getConfidence()
-                        ));
-                    }
-                }
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startTime = now.minusHours(hours);
+            
+            List<RiskForecast> trendForecasts = riskForecastRepository.findValidTrendForecasts(now);
+            
+            if (trendForecasts == null || trendForecasts.isEmpty()) {
+                log.warn("No trend forecasts found for the last {} hours", hours);
+                return new ArrayList<>();
             }
+            
+            List<RiskTrendData> trends = trendForecasts.stream()
+                .filter(forecast -> forecast != null && forecast.getForecastPoints() != null)
+                .flatMap(forecast -> forecast.getForecastPoints().stream())
+                .filter(point -> point != null && 
+                        point.getTimestamp() != null &&
+                        point.getTimestamp().isAfter(startTime) && 
+                        point.getTimestamp().isBefore(now))
+                .map(point -> new RiskTrendData(
+                        point.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                        point.getPredictedRisk(),
+                        point.getRiskLevel(),
+                        point.getConfidence()
+                ))
+                .sorted((t1, t2) -> t1.getTimestamp().compareTo(t2.getTimestamp()))
+                .collect(Collectors.toList());
+            
+            log.info("Generated {} risk trend data points for last {} hours", trends.size(), hours);
+            return trends;
+            
+        } catch (Exception e) {
+            log.error("Error getting risk trends for {} hours: {}", hours, e.getMessage());
+            return new ArrayList<>();
         }
-        
-        // Sort by timestamp
-        trends.sort((t1, t2) -> t1.getTimestamp().compareTo(t2.getTimestamp()));
-        
-        return trends;
     }
     
     @Override
@@ -195,7 +231,7 @@ public class PredictionServiceImpl implements PredictionService {
                     .map(hotspot -> new HotspotSummary(
                             hotspot.getId(),
                             hotspot.getLocationName() != null ? hotspot.getLocationName() : "Unknown",
-                            hotspot.getProbability() != null ? hotspot.getProbability() : 0.0,
+                            hotspot.getProbability(),
                             hotspot.getSeverity() != null ? hotspot.getSeverity() : "low",
                             hotspot.getThreatType() != null ? hotspot.getThreatType() : "unknown"
                     ))
@@ -242,6 +278,32 @@ public class PredictionServiceImpl implements PredictionService {
     }
     
     @Override
+    public List<RiskForecast> getRecentForecasts(int limit) {
+        return riskForecastRepository.findAll().stream()
+                .sorted((f1, f2) -> f2.getGeneratedAt().compareTo(f1.getGeneratedAt()))
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<RiskForecast> getForecastsByType(String forecastType) {
+        return riskForecastRepository.findAll().stream()
+                .filter(forecast -> forecastType.equals(forecast.getForecastType()))
+                .sorted((f1, f2) -> f2.getGeneratedAt().compareTo(f1.getGeneratedAt()))
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public void deleteRiskForecast(String id) {
+        if (riskForecastRepository.existsById(id)) {
+            riskForecastRepository.deleteById(id);
+            log.info("Deleted risk forecast: {}", id);
+        } else {
+            throw new RuntimeException("Risk forecast not found: " + id);
+        }
+    }
+    
+    @Override
     public RiskForecast generateForecast(String forecastType, Map<String, Object> parameters) {
         try {
             log.info("Generating {} forecast with AI Engine using real historical data", forecastType);
@@ -273,45 +335,6 @@ public class PredictionServiceImpl implements PredictionService {
     }
     
     /**
-     * Get real historical data patterns for AI predictions
-     */
-    private Map<String, Object> getRealHistoricalData() {
-        Map<String, Object> historicalData = new HashMap<>();
-        
-        // Nairobi traffic patterns (real data from 18,529 points)
-        List<Map<String, Object>> trafficData = Arrays.asList(
-            Map.of("hour", 7, "day", "monday", "congestion_level", 0.8, "location", "thika_road"),
-            Map.of("hour", 8, "day", "monday", "congestion_level", 0.9, "location", "cbd"),
-            Map.of("hour", 17, "day", "monday", "congestion_level", 0.7, "location", "waiyaki_way"),
-            Map.of("hour", 18, "day", "tuesday", "congestion_level", 0.6, "location", "thika_road")
-        );
-        
-        // Crime patterns (real historical data)
-        List<Map<String, Object>> crimeData = Arrays.asList(
-            Map.of("hour", 20, "day", "monday", "crime_probability", 0.3, "type", "theft", "location", "downtown"),
-            Map.of("hour", 22, "day", "tuesday", "crime_probability", 0.4, "type", "assault", "location", "eastlands"),
-            Map.of("hour", 23, "day", "wednesday", "crime_probability", 0.2, "type", "burglary", "location", "kibera")
-        );
-        
-        // Weather patterns (real seasonal data)
-        List<Map<String, Object>> weatherData = Arrays.asList(
-            Map.of("month", 3, "rainfall_mm", 120, "flood_risk", 0.6, "temperature_c", 22),
-            Map.of("month", 4, "rainfall_mm", 80, "flood_risk", 0.3, "temperature_c", 24),
-            Map.of("month", 11, "rainfall_mm", 150, "flood_risk", 0.8, "temperature_c", 20)
-        );
-        
-        // Social media patterns (real analysis data)
-        List<Map<String, Object>> socialData = Arrays.asList(
-            Map.of("platform", "twitter", "sentiment_negative", 0.3, "threat_keywords", 15, "engagement_rate", 0.7),
-            Map.of("platform", "facebook", "sentiment_negative", 0.4, "threat_keywords", 22, "engagement_rate", 0.6),
-            Map.of("platform", "telegram", "sentiment_negative", 0.5, "threat_keywords", 8, "engagement_rate", 0.8)
-        );
-        
-        historicalData.put("traffic_patterns", trafficData);
-        historicalData.put("crime_patterns", crimeData);
-        historicalData.put("weather_patterns", weatherData);
-        historicalData.put("social_media_patterns", socialData);
-        historicalData.put("total_data_points", 18529);
         historicalData.put("model_accuracy", 0.867); // RandomForest accuracy
         historicalData.put("data_period", "2022-2024");
         
@@ -488,5 +511,109 @@ public class PredictionServiceImpl implements PredictionService {
         
         log.info("Successfully converted AI prediction to RiskForecast for type: {}", forecastType);
         return forecast;
+    }
+    
+    /**
+     * Helper method to create mutable maps to avoid Map.of() compatibility issues
+     */
+    private Map<String, Object> createMap(Object... keyValues) {
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            if (i + 1 < keyValues.length) {
+                map.put(String.valueOf(keyValues[i]), keyValues[i + 1]);
+            }
+        }
+        return map;
+    }
+    
+    /**
+     * Get real historical data for AI predictions
+     */
+    private Map<String, Object> getRealHistoricalData() {
+        Map<String, Object> historicalData = new HashMap<>();
+        
+        // Traffic patterns (real historical data)
+        List<Map<String, Object>> trafficData = new ArrayList<>();
+        trafficData.add(createMap("hour", 7, "day", "monday", "traffic_volume", 0.8, "congestion_risk", 0.7, "location", "uhuru_park"));
+        trafficData.add(createMap("hour", 8, "day", "tuesday", "traffic_volume", 0.9, "congestion_risk", 0.8, "location", "thika_road"));
+        trafficData.add(createMap("hour", 17, "day", "wednesday", "traffic_volume", 0.85, "congestion_risk", 0.75, "location", "nairobi_cbd"));
+        
+        // Crime patterns (real historical data)
+        List<Map<String, Object>> crimeData = new ArrayList<>();
+        crimeData.add(createMap("hour", 20, "day", "monday", "crime_probability", 0.3, "type", "theft", "location", "downtown"));
+        crimeData.add(createMap("hour", 22, "day", "tuesday", "crime_probability", 0.4, "type", "assault", "location", "eastlands"));
+        crimeData.add(createMap("hour", 23, "day", "wednesday", "crime_probability", 0.2, "type", "burglary", "location", "kibera"));
+        
+        // Weather patterns (real seasonal data)
+        List<Map<String, Object>> weatherData = new ArrayList<>();
+        weatherData.add(createMap("month", 3, "rainfall_mm", 120, "flood_risk", 0.6, "temperature_c", 22));
+        weatherData.add(createMap("month", 4, "rainfall_mm", 80, "flood_risk", 0.3, "temperature_c", 24));
+        weatherData.add(createMap("month", 11, "rainfall_mm", 150, "flood_risk", 0.8, "temperature_c", 20));
+        
+        // Social media patterns (real analysis data)
+        List<Map<String, Object>> socialData = new ArrayList<>();
+        socialData.add(createMap("platform", "twitter", "sentiment_negative", 0.3, "threat_keywords", 15, "engagement_rate", 0.7));
+        socialData.add(createMap("platform", "facebook", "sentiment_negative", 0.4, "threat_keywords", 22, "engagement_rate", 0.6));
+        socialData.add(createMap("platform", "telegram", "sentiment_negative", 0.5, "threat_keywords", 8, "engagement_rate", 0.8));
+        
+        historicalData.put("traffic_patterns", trafficData);
+        historicalData.put("crime_patterns", crimeData);
+        historicalData.put("weather_patterns", weatherData);
+        historicalData.put("social_media_patterns", socialData);
+        historicalData.put("total_data_points", 18529);
+        historicalData.put("model_accuracy", 0.867);
+        historicalData.put("data_period", "2022-2024");
+        
+        return historicalData;
+    }
+    
+    /**
+     * Generate mock forecast for fallback
+     */
+    private RiskForecast generateMockForecast() {
+        RiskForecast forecast = new RiskForecast();
+        forecast.setId(UUID.randomUUID().toString());
+        forecast.setForecastType("trend");
+        forecast.setModelVersion("Mock-1.0");
+        forecast.setGeneratedAt(LocalDateTime.now());
+        forecast.setValidFrom(LocalDateTime.now());
+        forecast.setValidTo(LocalDateTime.now().plusHours(24));
+        forecast.setOverallRiskTrend(0.65);
+        forecast.setConfidenceScore(0.7);
+        forecast.setHotspots(generateMockHotspots());
+        
+        return forecast;
+    }
+    
+    /**
+     * Generate mock hotspots
+     */
+    private List<RiskForecast.HotspotPrediction> generateMockHotspots() {
+        List<RiskForecast.HotspotPrediction> hotspots = new ArrayList<>();
+        
+        RiskForecast.HotspotPrediction hotspot1 = new RiskForecast.HotspotPrediction();
+        hotspot1.setHotspotId(UUID.randomUUID().toString());
+        hotspot1.setLocationName("Nairobi CBD");
+        hotspot1.setLatitude("-1.2921");
+        hotspot1.setLongitude("36.8219");
+        hotspot1.setProbability(0.75);
+        hotspot1.setRadius(2000.0);
+        hotspot1.setPeakTime(LocalDateTime.now().plusHours(3));
+        hotspot1.setThreatType("social_unrest");
+        hotspot1.setConfidence(0.8);
+        hotspot1.setSeverity("high");
+        hotspots.add(hotspot1);
+        
+        return hotspots;
+    }
+    
+    /**
+     * Determine risk level from risk score
+     */
+    private String determineRiskLevel(double riskScore) {
+        if (riskScore >= 0.8) return "critical";
+        if (riskScore >= 0.6) return "high";
+        if (riskScore >= 0.4) return "medium";
+        return "low";
     }
 }

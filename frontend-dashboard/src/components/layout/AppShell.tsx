@@ -21,9 +21,12 @@ import {
   BellOutlined,
   SyncOutlined,
   LogoutOutlined,
-  SettingOutlined
+  SettingOutlined,
+  BulbOutlined,
+  MoonOutlined
 } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -42,6 +45,7 @@ interface GlobalThreatLevel {
 
 export default function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const { isDarkMode, toggleTheme, themeStyles } = useTheme();
   const [globalThreat, setGlobalThreat] = useState<GlobalThreatLevel>({
     level: 'medium',
     tpi: 65,
@@ -153,13 +157,13 @@ export default function AppShell({ children }: AppShellProps) {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: '100vh', background: themeStyles.background }}>
       <Sider 
         trigger={null} 
         collapsible 
         collapsed={collapsed}
         style={{
-          background: '#001529',
+          background: themeStyles.sidebarBackground,
           position: 'fixed',
           height: '100vh',
           left: 0,
@@ -172,29 +176,30 @@ export default function AppShell({ children }: AppShellProps) {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          background: 'rgba(255, 255, 255, 0.1)',
+          background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
           margin: '16px',
           borderRadius: '6px'
         }}>
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: collapsed ? '14px' : '18px' }}>
+          <Text style={{ color: themeStyles.sidebarTextColor, fontWeight: 'bold', fontSize: collapsed ? '14px' : '18px' }}>
             {collapsed ? 'NTEWS' : 'NTEWS'}
           </Text>
         </div>
         
         <Menu
-          theme="dark"
+          theme={isDarkMode ? 'dark' : 'light'}
           mode="inline"
           selectedKeys={pathname ? [pathname] : []}
           items={menuItems}
           onClick={handleMenuClick}
+          style={{ background: 'transparent' }}
         />
       </Sider>
 
       <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
         <Header style={{ 
           padding: '0 24px', 
-          background: '#fff',
-          borderBottom: '1px solid #f0f0f0',
+          background: themeStyles.headerColor,
+          borderBottom: `1px solid ${themeStyles.cardBorder}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -251,14 +256,30 @@ export default function AppShell({ children }: AppShellProps) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <Badge count={globalThreat.activeAlerts} size="small">
-              <Button type="text" icon={<BellOutlined />} />
+              <Button 
+                type="text" 
+                icon={<BellOutlined />} 
+                style={{ color: isDarkMode ? '#ffffff' : '#000000' }}
+              />
             </Badge>
+            
+            <Button 
+              type="text" 
+              icon={isDarkMode ? <BulbOutlined /> : <MoonOutlined />}
+              onClick={toggleTheme}
+              style={{ 
+                color: isDarkMode ? '#ffffff' : '#000000',
+                fontSize: '16px'
+              }}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            />
             
             <Button 
               type="text" 
               icon={<SyncOutlined spin />} 
               size="small"
               onClick={() => window.location.reload()}
+              style={{ color: isDarkMode ? '#ffffff' : '#000000' }}
             />
             
             <Dropdown
@@ -279,7 +300,7 @@ export default function AppShell({ children }: AppShellProps) {
         <Content style={{ 
           margin: '24px',
           padding: '24px',
-          background: '#f0f2f5',
+          background: themeStyles.contentBackground,
           minHeight: 'calc(100vh - 112px)'
         }}>
           {children}

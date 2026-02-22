@@ -117,6 +117,7 @@ public class IntelligenceReport {
         TERRORISM("terrorism"),
         CYBER("cyber"),
         PHYSICAL_SECURITY("physical_security"),
+        SECURITY("security"),  // Added for compatibility
         SOCIAL_UNREST("social_unrest"),
         NATURAL_DISASTER("natural_disaster"),
         ECONOMIC("economic"),

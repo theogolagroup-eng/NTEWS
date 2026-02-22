@@ -6,38 +6,55 @@ import {
   Row, 
   Col, 
   Statistic, 
-  Alert, 
+  List, 
   Badge, 
-  Table, 
-  Button,
-  Space,
-  Tag,
-  Tooltip,
+  Tag, 
+  Space, 
   Progress,
-  Timeline,
-  List,
-  Avatar
+  Alert,
+  Spin
 } from 'antd';
 import {
-  WarningOutlined,
-  RiseOutlined,
-  EnvironmentOutlined,
-  ThunderboltOutlined,
   SafetyOutlined,
-  ClockCircleOutlined,
-  EyeOutlined,
-  ReloadOutlined,
+  ExclamationCircleOutlined,
   FireOutlined,
+  BellOutlined,
+  EnvironmentOutlined,
+  RiseOutlined,
+  ClockCircleOutlined,
   LoadingOutlined
 } from '@ant-design/icons';
 import dynamic from 'next/dynamic';
 import { API_ENDPOINTS, apiClient } from '@/services/api';
+import { useTheme } from '@/contexts/ThemeContext';
+import ActionPointsPanel from '@/components/action-points/ActionPointsPanel';
 
 // Dynamically import the map component to avoid SSR issues
 const ThreatMap = dynamic(() => import('@/components/maps/ThreatMap'), {
   ssr: false,
   loading: () => <div>Loading map...</div>
 });
+
+interface Alert {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'active' | 'acknowledged' | 'investigating' | 'resolved' | 'closed' | 'false_positive';
+  category: string;
+  location?: {
+    address: string;
+    city: string;
+    region: string;
+    country: string;
+    latitude: string;
+    longitude: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  timestamp?: string;
+}
 
 interface DashboardData {
   intelligenceSummary: {
@@ -69,6 +86,7 @@ interface DashboardData {
       id: string;
       title: string;
       severity: string;
+      priority: string;
       status: string;
       timestamp: string;
       location: string;
@@ -80,7 +98,7 @@ interface DashboardData {
     mediumRiskHotspots: number;
     lowRiskHotspots: number;
     currentRiskTrend: number;
-    trendDirection: string | null;
+    trendDirection: string | undefined;
     topHotspots: Array<{
       id: string;
       locationName: string;
@@ -88,15 +106,13 @@ interface DashboardData {
       severity: string;
       threatType: string;
     }>;
-    recentTrends: Array<{
-      timestamp: string;
-      trend: number;
-      confidence: number;
-    }>;
+    recentTrends: Array<any>;
   };
 }
 
-export default function CommandDashboard() {
+// Internal component (not exported)
+function CommandDashboard() {
+  const { isDarkMode, themeStyles } = useTheme();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,76 +124,7 @@ export default function CommandDashboard() {
     // Set up periodic refresh
     const refreshInterval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
     
-    // Set up WebSocket for real-time updates with plain WebSocket
-    let ws: WebSocket | null = null;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    
-    const connectWebSocket = () => {
-      try {
-        // Use the direct WebSocket endpoint
-        ws = new WebSocket('ws://localhost:8081/ws/alerts-direct');
-        
-        ws.onopen = () => {
-          console.log('WebSocket connected successfully');
-          reconnectAttempts = 0;
-          
-          // Send subscription message
-          ws.send(JSON.stringify({
-            type: 'subscribe',
-            message: 'Frontend connected to alerts'
-          }));
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('Real-time WebSocket message:', data);
-            
-            if (data.type === 'alert' && data.data) {
-              console.log('New alert received:', data.data);
-              fetchDashboardData(); // Refresh data when new alert arrives
-            } else if (data.type === 'initial_data' && data.alerts) {
-              console.log('Initial alerts loaded:', data.alerts.length);
-            } else if (data.type === 'system_status') {
-              console.log('System status update:', data.status);
-            }
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-        
-        ws.onclose = (event) => {
-          console.log('WebSocket disconnected:', event.code, event.reason);
-          // Attempt to reconnect
-          if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
-            setTimeout(connectWebSocket, 1000 * reconnectAttempts);
-          } else {
-            console.error('Max reconnection attempts reached');
-          }
-        };
-        
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-        };
-        
-      } catch (error) {
-        console.error('Failed to create WebSocket connection:', error);
-        // Fallback to polling if WebSocket fails
-        console.log('Falling back to polling mode');
-      }
-    };
-    
-    connectWebSocket();
-    
-    return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-    };
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const fetchDashboardData = async () => {
@@ -190,16 +137,51 @@ export default function CommandDashboard() {
         setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
       
-      const [intelData, alertData, predictionData] = await Promise.all([
-        Promise.race([apiClient.get(API_ENDPOINTS.INTELLIGENCE.DASHBOARD), timeoutPromise]),
-        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.DASHBOARD), timeoutPromise]),
-        Promise.race([apiClient.get(API_ENDPOINTS.PREDICTIONS.DASHBOARD), timeoutPromise])
+      const [intelData, alertData, predictionData, allAlerts] = await Promise.all([
+        Promise.race([apiClient.get(API_ENDPOINTS.INTELLIGENCE.DASHBOARD).catch(() => ({ totalReports: 0, activeThreats: 0, criticalThreats: 0, highThreats: 0, mediumThreats: 0, lowThreats: 0, categoryCounts: [], recentThreats: [] })), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.DASHBOARD).catch(() => ({ totalAlerts: 0, activeAlerts: 0, unacknowledgedAlerts: 0, criticalAlerts: 0, highAlerts: 0, mediumAlerts: 0, lowAlerts: 0, severityCounts: [], recentAlerts: [] })), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.PREDICTIONS.DASHBOARD).catch(() => ({ activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] })), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.ALL).catch(() => ({ content: [] })), timeoutPromise])
       ]);
+
+      // Process alerts data similar to AlertsPage
+      const alertsList = allAlerts?.content || [];
+      const activeAlerts = alertsList.filter((alert: Alert) => alert.status === 'active');
+      const criticalAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'critical');
+      const highAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'high');
+      const mediumAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'medium');
+      const lowAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'low');
+      
+      // Create recent alerts list
+      const recentAlerts = alertsList.slice(0, 5).map((alert: Alert) => ({
+        id: alert.id,
+        title: alert.title,
+        severity: alert.severity,
+        priority: alert.priority,
+        status: alert.status,
+        timestamp: alert.createdAt || alert.timestamp,
+        location: alert.location?.address || alert.location
+      }));
 
       setDashboardData({
         intelligenceSummary: intelData || { totalReports: 0, activeThreats: 0, criticalThreats: 0, highThreats: 0, mediumThreats: 0, lowThreats: 0, categoryCounts: [], recentThreats: [] },
-        alertSummary: alertData || { totalAlerts: 0, activeAlerts: 0, unacknowledgedAlerts: 0, criticalAlerts: 0, highAlerts: 0, mediumAlerts: 0, lowAlerts: 0, severityCounts: [], recentAlerts: [] },
-        predictionSummary: predictionData || { activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: null, topHotspots: [], recentTrends: [] }
+        alertSummary: {
+          totalAlerts: alertsList.length,
+          activeAlerts: activeAlerts.length,
+          unacknowledgedAlerts: activeAlerts.filter((alert: Alert) => alert.status === 'active').length,
+          criticalAlerts: criticalAlerts.length,
+          highAlerts: highAlerts.length,
+          mediumAlerts: mediumAlerts.length,
+          lowAlerts: lowAlerts.length,
+          severityCounts: [
+            { severity: 'critical', count: criticalAlerts.length },
+            { severity: 'high', count: highAlerts.length },
+            { severity: 'medium', count: mediumAlerts.length },
+            { severity: 'low', count: lowAlerts.length }
+          ],
+          recentAlerts: recentAlerts
+        },
+        predictionSummary: predictionData || { activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] }
       });
       
     } catch (err) {
@@ -209,7 +191,7 @@ export default function CommandDashboard() {
       setDashboardData({
         intelligenceSummary: { totalReports: 0, activeThreats: 0, criticalThreats: 0, highThreats: 0, mediumThreats: 0, lowThreats: 0, categoryCounts: [], recentThreats: [] },
         alertSummary: { totalAlerts: 0, activeAlerts: 0, unacknowledgedAlerts: 0, criticalAlerts: 0, highAlerts: 0, mediumAlerts: 0, lowAlerts: 0, severityCounts: [], recentAlerts: [] },
-        predictionSummary: { activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: null, topHotspots: [], recentTrends: [] }
+        predictionSummary: { activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] }
       });
     } finally {
       setLoading(false);
@@ -226,91 +208,26 @@ export default function CommandDashboard() {
     return colors[severity as keyof typeof colors] || 'default';
   };
 
-  const getThreatLevelColor = (level: string) => {
-    const colors = {
-      critical: '#ff4d4f',
-      high: '#ff7a45',
-      medium: '#ffa940',
-      low: '#52c41a'
-    };
-    return colors[level as keyof typeof colors] || '#d9d9d9';
-  };
-
-  const getTrendIcon = (direction: string) => {
-    switch (direction) {
-      case 'increasing': return <RiseOutlined style={{ color: '#ff4d4f' }} />;
-      case 'decreasing': return <RiseOutlined style={{ color: '#52c41a', transform: 'rotate(180deg)' }} />;
-      default: return <RiseOutlined style={{ color: '#d9d9d9' }} />;
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'increasing': return <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />;
+      case 'decreasing': return <SafetyOutlined style={{ color: '#52c41a' }} />;
+      default: return <ClockCircleOutlined style={{ color: '#1890ff' }} />;
     }
   };
 
-  const alertColumns = [
-    {
-      title: 'Alert',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text: string, record: any) => (
-        <Space>
-          <WarningOutlined style={{ color: getThreatLevelColor(record.severity) }} />
-          <span>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: 'Severity',
-      dataIndex: 'severity',
-      key: 'severity',
-      render: (severity: string) => (
-        <Tag color={getSeverityColor(severity)}>{severity?.toUpperCase() || 'UNKNOWN'}</Tag>
-      ),
-    },
-    {
-      title: 'Location',
-      dataIndex: 'location',
-      key: 'location',
-      render: (location: string) => (
-        <Space>
-          <EnvironmentOutlined />
-          <span>{location}</span>
-        </Space>
-      ),
-    },
-    {
-      title: 'Time',
-      dataIndex: 'timestamp',
-      key: 'timestamp',
-      render: (timestamp: string) => (
-        <Space>
-          <ClockCircleOutlined />
-          <span suppressHydrationWarning>{new Date(timestamp).toLocaleTimeString()}</span>
-        </Space>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (record: any) => (
-        <Space>
-          <Button size="small" icon={<EyeOutlined />} onClick={() => setSelectedThreat(record)}>
-            View
-          </Button>
-        </Space>
-      ),
-    },
-  ];
-
   if (loading) {
     return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <LoadingOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
-        <h2>Loading NTEWS Command Dashboard...</h2>
+      <div style={{ padding: '24px', textAlign: 'center', background: themeStyles.background, minHeight: '100vh' }}>
+        <LoadingOutlined style={{ fontSize: '48px', color: isDarkMode ? '#1890ff' : '#1890ff' }} />
+        <h2 style={{ color: themeStyles.textColor, textShadow: themeStyles.textShadow }}>Loading NTEWS Command Dashboard...</h2>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: '24px', background: themeStyles.background, minHeight: '100vh' }}>
         <Alert
           message="Error"
           description={error}
@@ -327,297 +244,393 @@ export default function CommandDashboard() {
   const { intelligenceSummary, alertSummary, predictionSummary } = dashboardData;
 
   return (
-    <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+    <div style={{ 
+      padding: '16px', 
+      background: themeStyles.background, 
+      minHeight: '100vh',
+      color: themeStyles.textColor
+    }}>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>
-          NTEWS Command Dashboard
-        </h1>
-        <p style={{ color: '#666', marginTop: '8px' }}>
-          National Threat Early Warning System - Real-time Intelligence
-        </p>
+      <div style={{ 
+        marginBottom: '20px',
+        background: themeStyles.headerBackground,
+        padding: '16px 20px',
+        borderRadius: '12px',
+        backdropFilter: 'blur(10px)',
+        border: themeStyles.cardBorder
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ 
+              fontSize: '24px', 
+              fontWeight: '700', 
+              margin: 0,
+              background: isDarkMode 
+                ? 'linear-gradient(135deg, #ff6b6b, #4ecdc4)' 
+                : 'linear-gradient(135deg, #1890ff, #722ed1)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              textShadow: 'none'
+            }}>
+              NTEWS COMMAND CENTER
+            </h1>
+            <p style={{ 
+              color: themeStyles.secondaryTextColor, 
+              marginTop: '4px',
+              fontSize: '12px',
+              fontWeight: '500',
+              textShadow: themeStyles.textShadow
+            }}>
+              National Threat Early Warning System • Real-time Intelligence Operations
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: '#52c41a',
+              boxShadow: '0 0 8px #52c41a'
+            }} />
+            <span style={{ fontSize: '12px', color: '#52c41a', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+              SYSTEMS ONLINE
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Threat Level Banner */}
-      <Alert
-        message={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div 
-                  style={{ 
-                    width: 12, 
-                    height: 12, 
-                    borderRadius: '50%', 
-                    backgroundColor: getThreatLevelColor(
-                      intelligenceSummary.criticalThreats > 0 ? 'critical' :
-                      intelligenceSummary.highThreats > 5 ? 'high' :
-                      intelligenceSummary.activeThreats > 10 ? 'medium' : 'low'
-                    )
-                  }}
-                />
-                <strong style={{ 
-                  color: getThreatLevelColor(
-                    intelligenceSummary.criticalThreats > 0 ? 'critical' :
-                    intelligenceSummary.highThreats > 5 ? 'high' :
-                    intelligenceSummary.activeThreats > 10 ? 'medium' : 'low'
-                  )
-                }}>
-                  {intelligenceSummary.criticalThreats > 0 ? 'CRITICAL' :
-                   intelligenceSummary.highThreats > 5 ? 'HIGH' :
-                   intelligenceSummary.activeThreats > 10 ? 'MEDIUM' : 'LOW'} THREAT LEVEL
-                </strong>
+      {/* Key Metrics - Compact Cards */}
+      <Row gutter={[12, 12]} style={{ marginBottom: '20px' }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px'
+            }}
+            bodyStyle={{ padding: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#1890ff', textShadow: themeStyles.textShadow }}>
+                  {intelligenceSummary.activeThreats}
+                </div>
+                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                  Active Threats
+                </div>
+                <div style={{ fontSize: '10px', color: '#52c41a', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                  Total: {intelligenceSummary.totalReports}
+                </div>
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                <span>
-                  TPI: <strong>{Math.min(95, Math.max(5, intelligenceSummary.activeThreats * 5 + intelligenceSummary.criticalThreats * 20))}</strong>
-                </span>
-                <span>
-                  Active Alerts: <strong>{alertSummary.activeAlerts}</strong>
-                </span>
-                <span style={{ color: '#999', fontSize: '12px' }} suppressHydrationWarning>
-                  Last Update: {new Date().toLocaleTimeString()}
-                </span>
-              </div>
+              <SafetyOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
             </div>
-            
-            <Button type="primary" onClick={fetchDashboardData} icon={<ThunderboltOutlined />}>
-              Refresh
-            </Button>
-          </div>
-        }
-        type={intelligenceSummary.criticalThreats > 0 ? 'error' : 
-              intelligenceSummary.highThreats > 5 ? 'warning' : 
-              intelligenceSummary.activeThreats > 10 ? 'info' : 'success'}
-        showIcon={false}
-        style={{ marginBottom: '24px' }}
-      />
-
-      {/* Key Metrics */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Active Threats"
-              value={intelligenceSummary.activeThreats}
-              prefix={<SafetyOutlined />}
-              valueStyle={{ color: '#1890ff' }}
-              suffix={`/ ${intelligenceSummary.totalReports}`}
-            />
           </Card>
         </Col>
         
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Critical Alerts"
-              value={alertSummary.criticalAlerts}
-              prefix={<ClockCircleOutlined />}
-              valueStyle={{ color: '#ff4d4f' }}
-              suffix={`Unack: ${alertSummary.unacknowledgedAlerts}`}
-            />
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px'
+            }}
+            bodyStyle={{ padding: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#ff4d4f', textShadow: themeStyles.textShadow }}>
+                  {alertSummary.criticalAlerts}
+                </div>
+                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                  Critical Alerts
+                </div>
+                <div style={{ fontSize: '10px', color: '#fa8c16', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                  Unack: {alertSummary.unacknowledgedAlerts}
+                </div>
+              </div>
+              <ExclamationCircleOutlined style={{ fontSize: '20px', color: '#ff4d4f' }} />
+            </div>
           </Card>
         </Col>
         
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Active Hotspots"
-              value={predictionSummary.activeHotspots}
-              prefix={<FireOutlined />}
-              valueStyle={{ color: '#fa8c16' }}
-              suffix={`High: ${predictionSummary.highRiskHotspots}`}
-            />
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px'
+            }}
+            bodyStyle={{ padding: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#fa8c16', textShadow: themeStyles.textShadow }}>
+                  {predictionSummary.activeHotspots}
+                </div>
+                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                  Active Hotspots
+                </div>
+                <div style={{ fontSize: '10px', color: '#ff4d4f', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                  High Risk: {predictionSummary.highRiskHotspots}
+                </div>
+              </div>
+              <FireOutlined style={{ fontSize: '20px', color: '#fa8c16' }} />
+            </div>
           </Card>
         </Col>
         
         <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Risk Trend"
-              value={predictionSummary.currentRiskTrend ? 
-                `${(predictionSummary.currentRiskTrend * 100).toFixed(1)}%` : '0%'}
-              prefix={getTrendIcon(predictionSummary.trendDirection || 'stable')}
-              valueStyle={{ 
-                color: predictionSummary.trendDirection === 'increasing' ? '#ff4d4f' : 
-                       predictionSummary.trendDirection === 'decreasing' ? '#52c41a' : '#1890ff'
-              }}
-              suffix={predictionSummary.trendDirection || 'stable'}
-            />
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px'
+            }}
+            bodyStyle={{ padding: '16px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#52c41a', textShadow: themeStyles.textShadow }}>
+                  {alertSummary.activeAlerts}
+                </div>
+                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                  Total Alerts
+                </div>
+                <div style={{ fontSize: '10px', color: '#1890ff', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                  System Active
+                </div>
+              </div>
+              <BellOutlined style={{ fontSize: '20px', color: '#52c41a' }} />
+            </div>
           </Card>
         </Col>
       </Row>
 
-      {/* Main Content */}
-      <Row gutter={[16, 16]}>
-        {/* Threat Map */}
+      {/* Main Content Area */}
+      <Row gutter={[12, 12]}>
+        {/* Left Column - Alerts & Hotspots */}
         <Col xs={24} lg={16}>
-          <Card title="Threat Map - Real-time Intelligence" style={{ height: '500px' }}>
-            <ThreatMap />
-          </Card>
-        </Col>
-        
-        {/* Top Alerts Panel */}
-        <Col xs={24} lg={8}>
+          {/* Recent Alerts */}
           <Card 
-            title="Top Priority Alerts" 
-            extra={<Badge count={alertSummary.activeAlerts} overflowCount={99} />}
-            style={{ height: '500px', overflow: 'auto' }}
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px',
+              marginBottom: '12px'
+            }}
+            title={
+              <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <BellOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                LIVE ALERTS
+                <Badge count={alertSummary.activeAlerts} style={{ marginLeft: '8px', backgroundColor: '#52c41a' }} />
+              </div>
+            }
+            bodyStyle={{ padding: '12px' }}
           >
             <List
-              dataSource={alertSummary.recentAlerts?.slice(0, 8) || []}
+              dataSource={alertSummary.recentAlerts || []}
               renderItem={(item: any) => (
-                <List.Item
-                  actions={[
-                    <Button size="small" type="link" onClick={() => setSelectedThreat(item)}>
-                      View
-                    </Button>
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar 
-                        icon={<WarningOutlined />} 
-                        style={{ backgroundColor: getThreatLevelColor(item.severity) }}
-                      />
-                    }
-                    title={
-                      <Space>
-                        <span style={{ fontSize: '14px' }}>{item.title}</span>
-                        <Tag color={getSeverityColor(item.severity)} style={{ fontSize: '12px' }}>
-                          {item.severity}
+                <List.Item style={{ 
+                  padding: '8px 0',
+                  borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.06)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontSize: '13px', 
+                        fontWeight: '600', 
+                        color: themeStyles.textColor,
+                        marginBottom: '2px',
+                        textShadow: themeStyles.textShadow
+                      }}>
+                        {item.title}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <Tag 
+                          color={getSeverityColor(item.severity)}
+                          style={{ fontSize: '10px', padding: '2px 6px', border: 'none' }}
+                        >
+                          {item.severity?.toUpperCase()}
                         </Tag>
-                      </Space>
-                    }
-                    description={
-                      <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                        <span style={{ fontSize: '12px', color: '#666' }}>
-                          <EnvironmentOutlined style={{ fontSize: '10px' }} /> {item.location}
+                        <Tag 
+                          color="blue"
+                          style={{ fontSize: '10px', padding: '2px 6px', border: 'none' }}
+                        >
+                          {item.priority?.toUpperCase()}
+                        </Tag>
+                        <span style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textShadow: themeStyles.textShadow }}>
+                          {item.location || 'Unknown Location'}
                         </span>
-                        <span style={{ fontSize: '12px', color: '#999' }} suppressHydrationWarning>
-                          <ClockCircleOutlined style={{ fontSize: '10px' }} /> {new Date(item.timestamp).toLocaleString()}
-                        </span>
-                      </Space>
-                    }
-                  />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textShadow: themeStyles.textShadow }}>
+                      {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'Unknown Time'}
+                    </div>
+                  </div>
                 </List.Item>
               )}
             />
           </Card>
-        </Col>
-      </Row>
 
-      {/* Bottom Section */}
-      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
-        {/* Threat Level Distribution */}
-        <Col xs={24} lg={8}>
-          <Card title="Threat Level Distribution">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Critical</span>
-                <Space>
-                  <Progress 
-                    percent={(intelligenceSummary.criticalThreats / Math.max(1, intelligenceSummary.activeThreats)) * 100} 
-                    size="small" 
-                    strokeColor="#ff4d4f"
-                    showInfo={false}
-                    style={{ width: '100px' }}
-                  />
-                  <Tag color="red">{intelligenceSummary.criticalThreats}</Tag>
-                </Space>
+          {/* Top Hotspots */}
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px'
+            }}
+            title={
+              <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <FireOutlined style={{ marginRight: '8px', color: '#fa8c16' }} />
+                THREAT HOTSPOTS
+                <Badge count={predictionSummary.activeHotspots} style={{ marginLeft: '8px', backgroundColor: '#fa8c16' }} />
               </div>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>High</span>
-                <Space>
-                  <Progress 
-                    percent={(intelligenceSummary.highThreats / Math.max(1, intelligenceSummary.activeThreats)) * 100} 
-                    size="small" 
-                    strokeColor="#ff7a45"
-                    showInfo={false}
-                    style={{ width: '100px' }}
-                  />
-                  <Tag color="orange">{intelligenceSummary.highThreats}</Tag>
-                </Space>
-              </div>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Medium</span>
-                <Space>
-                  <Progress 
-                    percent={(intelligenceSummary.mediumThreats / Math.max(1, intelligenceSummary.activeThreats)) * 100} 
-                    size="small" 
-                    strokeColor="#ffa940"
-                    showInfo={false}
-                    style={{ width: '100px' }}
-                  />
-                  <Tag color="gold">{intelligenceSummary.mediumThreats}</Tag>
-                </Space>
-              </div>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Low</span>
-                <Space>
-                  <Progress 
-                    percent={(intelligenceSummary.lowThreats / Math.max(1, intelligenceSummary.activeThreats)) * 100} 
-                    size="small" 
-                    strokeColor="#52c41a"
-                    showInfo={false}
-                    style={{ width: '100px' }}
-                  />
-                  <Tag color="green">{intelligenceSummary.lowThreats}</Tag>
-                </Space>
-              </div>
-            </Space>
-          </Card>
-        </Col>
-
-        {/* Recent Threat Intelligence */}
-        <Col xs={24} lg={16}>
-          <Card title="Recent Threat Intelligence">
-            <Table
-              columns={alertColumns}
-              dataSource={intelligenceSummary.recentThreats?.slice(0, 5) || []}
-              pagination={false}
-              size="small"
-              rowKey="id"
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Top Hotspots */}
-      <Row gutter={[16, 16]} style={{ marginTop: '16px' }}>
-        <Col span={24}>
-          <Card title="Top Threat Hotspots">
-            <Row gutter={[16, 16]}>
-              {predictionSummary.topHotspots?.slice(0, 6).map((hotspot) => (
-                <Col xs={24} sm={12} lg={8} xl={6} key={hotspot.id}>
-                  <Card size="small" style={{ textAlign: 'center' }}>
-                    <div style={{ marginBottom: '12px' }}>
-                      <FireOutlined style={{ fontSize: '24px', color: getThreatLevelColor(hotspot.severity) }} />
+            }
+            bodyStyle={{ padding: '12px' }}
+          >
+            <Row gutter={[8, 8]}>
+              {(predictionSummary.topHotspots || []).slice(0, 4).map((hotspot: any, index: number) => (
+                <Col xs={24} sm={12} key={index}>
+                  <div style={{
+                    background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    border: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.06)',
+                    borderRadius: '6px',
+                    padding: '12px'
+                  }}>
+                    <div style={{ 
+                      fontSize: '12px', 
+                      fontWeight: '600', 
+                      color: themeStyles.textColor,
+                      marginBottom: '4px',
+                      textShadow: themeStyles.textShadow
+                    }}>
+                      {hotspot.locationName}
                     </div>
-                    <h4 style={{ margin: '8px 0' }}>{hotspot.locationName}</h4>
-                    <Tag color={getSeverityColor(hotspot.severity)} style={{ marginBottom: '8px' }}>
-                      {hotspot.severity?.toUpperCase() || 'UNKNOWN'}
-                    </Tag>
-                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Tag 
+                        color={hotspot.severity === 'high' ? 'red' : 'orange'}
+                        style={{ fontSize: '9px', padding: '1px 4px', border: 'none' }}
+                      >
+                        {hotspot.severity?.toUpperCase()}
+                      </Tag>
+                      <span style={{ fontSize: '11px', color: '#52c41a', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                        {(hotspot.probability * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: themeStyles.secondaryTextColor, marginTop: '2px', textShadow: themeStyles.textShadow }}>
                       {hotspot.threatType}
                     </div>
-                    <Progress
-                      type="circle"
-                      percent={Math.round(hotspot.probability * 100)}
-                      size={60}
-                      strokeColor={getThreatLevelColor(hotspot.severity)}
-                    />
-                  </Card>
+                  </div>
                 </Col>
               ))}
             </Row>
           </Card>
         </Col>
+
+        {/* Right Column - Map, Stats & Actions */}
+        <Col xs={24} lg={8}>
+          {/* Threat Map */}
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px',
+              marginBottom: '12px'
+            }}
+            title={
+              <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <EnvironmentOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+                THREAT MAP
+              </div>
+            }
+            bodyStyle={{ padding: '12px', height: '300px' }}
+          >
+            <div style={{
+              height: '100%',
+              background: isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: themeStyles.secondaryTextColor,
+              fontSize: '12px',
+              textShadow: themeStyles.textShadow
+            }}>
+              Interactive threat mapping visualization
+            </div>
+          </Card>
+
+          {/* Severity Distribution */}
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px',
+              marginBottom: '12px'
+            }}
+            title={
+              <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <RiseOutlined style={{ marginRight: '8px', color: '#722ed1' }} />
+                THREAT LEVELS
+              </div>
+            }
+            bodyStyle={{ padding: '12px' }}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {alertSummary.severityCounts?.map((count: any) => (
+                <div key={count.severity} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: themeStyles.secondaryTextColor, textShadow: themeStyles.textShadow }}>
+                    {count.severity?.toUpperCase()}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Progress 
+                      percent={(count.count / Math.max(1, alertSummary.totalAlerts)) * 100} 
+                      size="small" 
+                      strokeColor={getSeverityColor(count.severity)}
+                      showInfo={false}
+                      style={{ width: '60px' }}
+                    />
+                    <Tag 
+                      color={getSeverityColor(count.severity)}
+                      style={{ fontSize: '10px', padding: '1px 4px', border: 'none' }}
+                    >
+                      {count.count}
+                    </Tag>
+                  </div>
+                </div>
+              ))}
+            </Space>
+          </Card>
+
+          {/* Action Points Panel */}
+          <Card 
+            style={{ 
+              background: themeStyles.cardBackground,
+              border: themeStyles.cardBorder,
+              borderRadius: '8px'
+            }}
+            title={
+              <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <BellOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                ACTION POINTS
+              </div>
+            }
+            bodyStyle={{ padding: '12px' }}
+          >
+            <ActionPointsPanel />
+          </Card>
+        </Col>
       </Row>
     </div>
+  );
+}
+
+// Export the wrapped component as default
+export default function CommandDashboardWithTheme() {
+  return (
+    <React.Fragment>
+      <CommandDashboard />
+    </React.Fragment>
   );
 }
