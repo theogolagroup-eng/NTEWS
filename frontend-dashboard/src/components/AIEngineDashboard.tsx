@@ -60,10 +60,9 @@ const AIEngineDashboard: React.FC = () => {
   useEffect(() => {
     fetchAIEngineData();
     
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchAIEngineData, 30000);
-    
-    return () => clearInterval(interval);
+    // Auto-refresh disabled to prevent UI interference
+    // const interval = setInterval(fetchAIEngineData, 30000);
+    // return () => clearInterval(interval);
   }, []);
 
   const getStatusColor = (status: string) => {

@@ -121,10 +121,9 @@ function CommandDashboard() {
   useEffect(() => {
     fetchDashboardData();
     
-    // Set up periodic refresh
-    const refreshInterval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
-    
-    return () => clearInterval(refreshInterval);
+    // Auto-refresh disabled to prevent UI interference
+    // const refreshInterval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
+    // return () => clearInterval(refreshInterval);
   }, []);
 
   const fetchDashboardData = async () => {

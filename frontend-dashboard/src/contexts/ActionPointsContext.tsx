@@ -89,6 +89,9 @@ interface ActionPointsContextType {
   getActionPointsByAssignee: (assignee: string) => ActionPoint[];
   getActionPointsByPriority: (priority: ActionPoint['priority']) => ActionPoint[];
   searchActionPoints: (query: string) => ActionPoint[];
+  
+  // Manual refresh
+  refreshActionPoints: () => Promise<void>;
 }
 
 const ActionPointsContext = createContext<ActionPointsContextType>({
@@ -112,6 +115,7 @@ const ActionPointsContext = createContext<ActionPointsContextType>({
   getActionPointsByAssignee: () => [],
   getActionPointsByPriority: () => [],
   searchActionPoints: () => [],
+  refreshActionPoints: async () => {},
 });
 
 // Mock Data for Development
@@ -195,10 +199,10 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load action points from backend on mount
+  // Load action points from backend on mount only
   useEffect(() => {
     fetchActionPoints();
-  }, []);
+  }, []); // Empty dependency array means run only once on mount
 
   const fetchActionPoints = async () => {
     try {
@@ -210,6 +214,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (err) {
       console.error('Failed to load action points:', err);
       setError('Failed to load action points');
+      // Don't re-throw to prevent continuous re-renders
     } finally {
       setLoading(false);
     }
@@ -223,6 +228,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.CREATE, actionPointData);
       const newActionPoint = response;
       
+      // Add to local state immediately without refresh
       setActionPoints(prev => [...prev, newActionPoint]);
       
       // Auto-trigger workflow if applicable
@@ -481,6 +487,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     getActionPointsByAssignee,
     getActionPointsByPriority,
     searchActionPoints,
+    refreshActionPoints: fetchActionPoints, // Add manual refresh function
   };
 
   return (

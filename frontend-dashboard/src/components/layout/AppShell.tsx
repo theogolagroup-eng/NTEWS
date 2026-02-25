@@ -138,8 +138,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchThreat();
-    const id = setInterval(fetchThreat, 30_000);
-    return () => clearInterval(id);
+    // Auto-refresh disabled to prevent UI interference
+    // const id = setInterval(fetchThreat, 30_000);
+    // return () => clearInterval(id);
   }, [fetchThreat]);
 
   const levelColor = LEVEL_COLOR[threat.level];

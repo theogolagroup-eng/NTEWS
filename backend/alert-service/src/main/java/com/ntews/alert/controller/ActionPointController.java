@@ -56,11 +56,13 @@ public class ActionPointController {
     public ResponseEntity<ActionPoint> createActionPoint(@RequestBody ActionPoint actionPoint) {
         try {
             logger.info("REST request to create action point: {}", actionPoint.getTitle());
+            logger.debug("ActionPoint data received: {}", actionPoint);
             
             ActionPoint created = actionPointService.createActionPoint(actionPoint);
             return ResponseEntity.ok(created);
         } catch (Exception e) {
             logger.error("Error creating action point: {}", e.getMessage(), e);
+            logger.error("ActionPoint that caused error: {}", actionPoint);
             return ResponseEntity.badRequest().build();
         }
     }

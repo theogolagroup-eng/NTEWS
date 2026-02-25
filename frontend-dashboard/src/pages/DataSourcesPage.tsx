@@ -92,8 +92,9 @@ function DataSourcesPage() {
 
   useEffect(() => {
     checkAllServices();
-    const interval = setInterval(checkAllServices, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
+    // Auto-refresh disabled to prevent UI interference
+    // const interval = setInterval(checkAllServices, 30000); // Check every 30 seconds
+    // return () => clearInterval(interval);
   }, []);
 
   const checkAllServices = async () => {

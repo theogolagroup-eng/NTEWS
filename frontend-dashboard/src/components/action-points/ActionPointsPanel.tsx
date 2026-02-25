@@ -79,6 +79,12 @@ export default function ActionPointsPanel({
 
   // Filter action points related to current context
   const relatedActionPoints = actionPoints.filter((ap) => {
+    // If no context is provided, show all action points
+    if (!relatedAlertId && !relatedThreatId && !relatedHotspotId) {
+      return true;
+    }
+    
+    // Otherwise, filter by context
     if (relatedAlertId && ap.relatedAlertId === relatedAlertId) return true;
     if (relatedThreatId && ap.relatedThreatId === relatedThreatId) return true;
     if (relatedHotspotId && ap.relatedHotspotId === relatedHotspotId)
@@ -137,25 +143,44 @@ export default function ActionPointsPanel({
 
   const handleCreateAction = async (values: any) => {
     try {
-      await createActionPoint({
+      // Create minimal action point data to avoid serialization issues
+      const actionPointData: any = {
         title: values.title,
-        description: values.description,
-        type: values.type,
-        priority: values.priority,
-        status: "pending",
-        createdBy: "System Analyst", // In real app, get from auth context
-        dueDate: values.dueDate?.toISOString(),
-        relatedAlertId,
-        relatedThreatId,
-        relatedHotspotId,
-        actions: [],
-        humanApprovalRequired: values.humanApprovalRequired,
-        autoTriggered: values.autoTriggered,
-      });
+        description: values.description || '',
+        type: values.type || 'investigate',
+        priority: values.priority || 'medium',
+        status: 'pending' as const,
+        createdBy: 'System Analyst',
+        autoTriggered: false,
+        humanApprovalRequired: false,
+        actions: []
+      };
+
+      // Only add optional fields if they exist
+      if (values.dueDate) {
+        actionPointData.dueDate = values.dueDate.toISOString();
+      }
+      if (relatedAlertId) {
+        actionPointData.relatedAlertId = relatedAlertId;
+      }
+      if (relatedThreatId) {
+        actionPointData.relatedThreatId = relatedThreatId;
+      }
+      if (relatedHotspotId) {
+        actionPointData.relatedHotspotId = relatedHotspotId;
+      }
+
+      console.log('Sending action point data:', actionPointData);
+      await createActionPoint(actionPointData);
 
       message.success("Action point created successfully");
       setShowCreateModal(false);
       form.resetFields();
+      
+      // Manually refresh the action points list to ensure it appears
+      setTimeout(() => {
+        window.location.reload(); // Simple refresh for now
+      }, 500);
     } catch (error) {
       message.error("Failed to create action point");
     }
@@ -302,9 +327,9 @@ export default function ActionPointsPanel({
                   >
                     {action.title}
                   </span>
-                  <Tag color={getPriorityColor(action.priority)} size="small">
+                  <span className={`priority-tag priority-${action.priority.toLowerCase()}`}>
                     {action.priority.toUpperCase()}
-                  </Tag>
+                  </span>
                   {action.autoTriggered && (
                     <Tooltip title="AI-triggered action">
                       <RobotOutlined style={{ color: "#722ed1" }} />
@@ -327,7 +352,6 @@ export default function ActionPointsPanel({
                     message="AI Recommendation"
                     description={action.aiRecommendation}
                     type="info"
-                    size="small"
                     style={{ marginBottom: "8px" }}
                   />
                 )}
@@ -360,7 +384,7 @@ export default function ActionPointsPanel({
                     </span>
                   )}
                   {action.humanApprovalRequired && (
-                    <Tag color="blue" size="small">
+                    <Tag color="blue">
                       Human Approval Required
                     </Tag>
                   )}

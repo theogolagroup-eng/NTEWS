@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -97,8 +98,9 @@ public class ActionPoint {
             return value;
         }
         
-        @JsonCreator
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
         public static ActionType fromValue(String value) {
+            if (value == null) return null;
             for (ActionType type : ActionType.values()) {
                 if (type.value.equals(value)) {
                     return type;
@@ -107,7 +109,6 @@ public class ActionPoint {
             throw new IllegalArgumentException("Unknown ActionType: " + value);
         }
         
-        @JsonProperty("type")
         public String toJson() {
             return value;
         }
@@ -129,8 +130,9 @@ public class ActionPoint {
             return value;
         }
         
-        @JsonCreator
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
         public static Priority fromValue(String value) {
+            if (value == null) return null;
             for (Priority priority : Priority.values()) {
                 if (priority.value.equals(value)) {
                     return priority;
@@ -161,8 +163,9 @@ public class ActionPoint {
             return value;
         }
         
-        @JsonCreator
+        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
         public static ActionStatus fromValue(String value) {
+            if (value == null) return null;
             for (ActionStatus status : ActionStatus.values()) {
                 if (status.value.equals(value)) {
                     return status;

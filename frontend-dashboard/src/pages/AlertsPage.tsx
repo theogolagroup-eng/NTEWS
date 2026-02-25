@@ -95,13 +95,12 @@ export default function AlertsPage() {
     fetchAlerts();
     fetchStatistics();
     
-    // Set up periodic refresh
-    const refreshInterval = setInterval(() => {
-      fetchAlerts();
-      fetchStatistics();
-    }, 30000); // Refresh every 30 seconds
-    
-    return () => clearInterval(refreshInterval);
+    // Auto-refresh disabled to prevent UI interference
+    // const refreshInterval = setInterval(() => {
+    //   fetchAlerts();
+    //   fetchStatistics();
+    // }, 30000); // Refresh every 30 seconds
+    // return () => clearInterval(refreshInterval);
   }, []);
 
   const fetchAlerts = async () => {
