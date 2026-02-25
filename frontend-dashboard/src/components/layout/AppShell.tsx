@@ -1,17 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Layout, 
-  Menu, 
-  Avatar, 
-  Badge, 
-  Dropdown, 
-  Space, 
-  Typography,
-  Button,
-  Alert
-} from 'antd';
+import React, { useState, useEffect, useCallback } from "react";
+import { Dropdown } from "antd";
 import {
   DashboardOutlined,
   AlertOutlined,
@@ -19,293 +9,422 @@ import {
   DatabaseOutlined,
   UserOutlined,
   BellOutlined,
-  SyncOutlined,
   LogoutOutlined,
   SettingOutlined,
-  BulbOutlined,
-  MoonOutlined
-} from '@ant-design/icons';
-import { useRouter, usePathname } from 'next/navigation';
-import { useTheme } from '@/contexts/ThemeContext';
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  ReloadOutlined,
+  CaretUpOutlined,
+  CaretDownOutlined,
+  MinusOutlined,
+} from "@ant-design/icons";
+import { useRouter, usePathname } from "next/navigation";
 
-const { Header, Sider, Content } = Layout;
-const { Text } = Typography;
-
-interface AppShellProps {
-  children: React.ReactNode;
-}
-
-interface GlobalThreatLevel {
-  level: 'critical' | 'high' | 'medium' | 'low';
-  tpi: number; // Threat Probability Index
+/* ── Types ─────────────────────────────────────────────────── */
+interface ThreatState {
+  level: "critical" | "high" | "medium" | "low";
+  tpi: number;
   activeAlerts: number;
-  lastUpdate: string;
-  userRole: string;
 }
 
-export default function AppShell({ children }: AppShellProps) {
+const NAV = [
+  {
+    href: "/dashboard",
+    icon: <DashboardOutlined />,
+    label: "Operations Center",
+  },
+  { href: "/alerts", icon: <AlertOutlined />, label: "Active Alerts" },
+  {
+    href: "/forecast",
+    icon: <ThunderboltOutlined />,
+    label: "Predictive Intel",
+  },
+  { href: "/sources", icon: <DatabaseOutlined />, label: "Data Sources" },
+];
+
+const LEVEL_COLOR: Record<string, string> = {
+  critical: "var(--red)",
+  high: "var(--orange)",
+  medium: "var(--yellow)",
+  low: "var(--green)",
+};
+
+const LEVEL_DIM: Record<string, string> = {
+  critical: "var(--red-dim)",
+  high: "var(--orange-dim)",
+  medium: "var(--yellow-dim)",
+  low: "var(--green-dim)",
+};
+
+const LEVEL_BORDER: Record<string, string> = {
+  critical: "var(--red-border)",
+  high: "var(--orange-border)",
+  medium: "var(--yellow-border)",
+  low: "var(--green-border)",
+};
+
+/* ── Live Clock ───────────────────────────────────────────── */
+function Clock() {
+  const [time, setTime] = useState("");
+  const [date, setDate] = useState("");
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const tz = { timeZone: "Africa/Nairobi" };
+      setTime(now.toLocaleTimeString("en-KE", { ...tz, hour12: false }));
+      setDate(
+        now.toLocaleDateString("en-KE", {
+          ...tz,
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+        }),
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div style={{ textAlign: "right" }}>
+      <div className="clock-time" suppressHydrationWarning>
+        {time || "--:--:--"}
+      </div>
+      <div className="clock-date" suppressHydrationWarning>
+        {date || ""} · EAT
+      </div>
+    </div>
+  );
+}
+
+/* ── AppShell ─────────────────────────────────────────────── */
+export default function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const { isDarkMode, toggleTheme, themeStyles } = useTheme();
-  const [globalThreat, setGlobalThreat] = useState<GlobalThreatLevel>({
-    level: 'medium',
+  const [threat, setThreat] = useState<ThreatState>({
+    level: "medium",
     tpi: 65,
     activeAlerts: 12,
-    lastUpdate: new Date().toISOString(),
-    userRole: 'Security Analyst'
   });
 
   const router = useRouter();
   const pathname = usePathname();
 
-  // Fetch global threat level periodically
-  useEffect(() => {
-    const fetchGlobalThreatLevel = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/api/intelligence/dashboard/summary');
-        const data = await response.json();
-        
-        // Calculate overall threat level
-        const totalThreats = data.criticalThreats + data.highThreats + data.mediumThreats;
-        let level: 'critical' | 'high' | 'medium' | 'low' = 'low';
-        
-        if (data.criticalThreats > 0) level = 'critical';
-        else if (data.highThreats > 5) level = 'high';
-        else if (totalThreats > 10) level = 'medium';
-        
-        setGlobalThreat(prev => ({
-          ...prev,
-          level,
-          tpi: Math.min(95, Math.max(5, totalThreats * 5 + data.criticalThreats * 20)),
-          activeAlerts: data.activeThreats,
-          lastUpdate: new Date().toISOString()
-        }));
-      } catch (error) {
-        console.error('Failed to fetch global threat level:', error);
-      }
-    };
-
-    fetchGlobalThreatLevel();
-    const interval = setInterval(fetchGlobalThreatLevel, 30000); // Update every 30 seconds
-
-    return () => clearInterval(interval);
+  /* Fetch threat state from backend */
+  const fetchThreat = useCallback(async () => {
+    try {
+      const res = await fetch(
+        "http://localhost:8080/api/intelligence/dashboard/summary",
+      );
+      const data = await res.json();
+      const total =
+        (data.criticalThreats ?? 0) +
+        (data.highThreats ?? 0) +
+        (data.mediumThreats ?? 0);
+      let level: ThreatState["level"] = "low";
+      if (data.criticalThreats > 0) level = "critical";
+      else if (data.highThreats > 5) level = "high";
+      else if (total > 10) level = "medium";
+      setThreat({
+        level,
+        tpi: Math.min(95, Math.max(5, total * 5 + data.criticalThreats * 20)),
+        activeAlerts: data.activeThreats ?? threat.activeAlerts,
+      });
+    } catch {
+      /* offline — keep last state */
+    }
   }, []);
 
-  const getThreatLevelColor = (level: string) => {
-    switch (level) {
-      case 'critical': return '#ff4d4f';
-      case 'high': return '#ff7a45';
-      case 'medium': return '#ffa940';
-      case 'low': return '#52c41a';
-      default: return '#d9d9d9';
-    }
-  };
+  useEffect(() => {
+    fetchThreat();
+    const id = setInterval(fetchThreat, 30_000);
+    return () => clearInterval(id);
+  }, [fetchThreat]);
 
-  const menuItems = [
-    {
-      key: '/dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-    },
-    {
-      key: '/alerts',
-      icon: <AlertOutlined />,
-      label: 'Alerts',
-    },
-    {
-      key: '/forecast',
-      icon: <ThunderboltOutlined />,
-      label: 'Forecast',
-    },
-    {
-      key: '/sources',
-      icon: <DatabaseOutlined />,
-      label: 'Data Sources',
-    },
-  ];
+  const levelColor = LEVEL_COLOR[threat.level];
+  const levelDim = LEVEL_DIM[threat.level];
+  const levelBorder = LEVEL_BORDER[threat.level];
 
-  const userMenuItems = [
-    {
-      key: 'profile',
-      icon: <UserOutlined />,
-      label: 'Profile',
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: 'Settings',
-    },
-    {
-      type: 'divider' as const,
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: 'Logout',
-      danger: true,
-    },
-  ];
+  /* Page title from route */
+  const pageTitle =
+    NAV.find((n) => pathname?.startsWith(n.href))?.label ?? "Dashboard";
 
-  const handleMenuClick = ({ key }: { key: string }) => {
-    router.push(key);
-  };
-
-  const handleUserMenuClick = ({ key }: { key: string }) => {
-    if (key === 'logout') {
-      // Handle logout
-      router.push('/login');
-    }
+  const userMenu = {
+    items: [
+      { key: "profile", icon: <UserOutlined />, label: "Profile" },
+      { key: "settings", icon: <SettingOutlined />, label: "Settings" },
+      { type: "divider" as const },
+      {
+        key: "logout",
+        icon: <LogoutOutlined />,
+        label: "Sign out",
+        danger: true,
+      },
+    ],
+    onClick: ({ key }: { key: string }) => {
+      if (key === "logout") router.push("/login");
+    },
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', background: themeStyles.background }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
-        collapsed={collapsed}
-        style={{
-          background: themeStyles.sidebarBackground,
-          position: 'fixed',
-          height: '100vh',
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
-      >
-        <div style={{ 
-          height: 64, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-          margin: '16px',
-          borderRadius: '6px'
-        }}>
-          <Text style={{ color: themeStyles.sidebarTextColor, fontWeight: 'bold', fontSize: collapsed ? '14px' : '18px' }}>
-            {collapsed ? 'NTEWS' : 'NTEWS'}
-          </Text>
-        </div>
-        
-        <Menu
-          theme={isDarkMode ? 'dark' : 'light'}
-          mode="inline"
-          selectedKeys={pathname ? [pathname] : []}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{ background: 'transparent' }}
-        />
-      </Sider>
+    /* .shell — full viewport, no overflow */
+    <div className="shell">
+      {/* Restricted banner */}
+      <div className="restricted-banner">
+        RESTRICTED — AUTHORIZED PERSONNEL ONLY — REPUBLIC OF KENYA
+      </div>
 
-      <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
-        <Header style={{ 
-          padding: '0 24px', 
-          background: themeStyles.headerColor,
-          borderBottom: `1px solid ${themeStyles.cardBorder}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <Button
-              type="text"
-              icon={collapsed ? <DashboardOutlined /> : <DashboardOutlined />}
-              onClick={() => setCollapsed(!collapsed)}
-              style={{ fontSize: '16px', width: 64, height: 64 }}
-            />
-            
-            {/* Global Threat Level Banner */}
-            <Alert
-              message={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div 
-                      style={{ 
-                        width: 12, 
-                        height: 12, 
-                        borderRadius: '50%', 
-                        backgroundColor: getThreatLevelColor(globalThreat.level) 
-                      }}
-                    />
-                    <Text strong style={{ color: getThreatLevelColor(globalThreat.level) }}>
-                      {globalThreat.level.toUpperCase()} THREAT LEVEL
-                    </Text>
+      {/* Shell body: sidebar + main column, side by side */}
+      <div className="shell-inner">
+        {/* ──────────────── SIDEBAR ──────────────────────── */}
+        <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
+          {/* Logo */}
+          <div className="sb-logo">
+            <div className="sb-logo-mark">KE</div>
+            {!collapsed && (
+              <div className="sb-logo-text">
+                <div className="sb-logo-name">NTEWS</div>
+                <div className="sb-logo-sub">Republic of Kenya</div>
+              </div>
+            )}
+          </div>
+
+          {/* Threat level strip */}
+          {!collapsed && (
+            <div
+              className="sb-threat"
+              style={{ background: levelDim, borderColor: levelBorder }}
+            >
+              <div
+                className={`dot ${threat.level === "critical" ? "dot-red" : threat.level === "low" ? "dot-green" : "dot-yellow"}`}
+              />
+              <div>
+                <div className="sb-threat-level" style={{ color: levelColor }}>
+                  {threat.level} threat
+                </div>
+                <div className="sb-threat-tpi">TPI {threat.tpi} / 100</div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <nav className="sb-nav">
+            {NAV.map(({ href, icon, label }) => {
+              const active = !!pathname?.startsWith(href);
+              return (
+                <button
+                  key={href}
+                  className={`sb-nav-item${active ? " active" : ""}`}
+                  onClick={() => router.push(href)}
+                  title={collapsed ? label : undefined}
+                  style={{
+                    justifyContent: collapsed ? "center" : "flex-start",
+                  }}
+                >
+                  <span className="icon">{icon}</span>
+                  {!collapsed && label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Online indicator */}
+          <div
+            className="sb-footer"
+            style={{ justifyContent: collapsed ? "center" : "flex-start" }}
+          >
+            <div className="dot dot-green" />
+            {!collapsed && (
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                All systems live
+              </span>
+            )}
+          </div>
+        </aside>
+
+        {/* ──────────────── MAIN COLUMN ──────────────────── */}
+        <div className="main-col">
+          {/* ── Topbar ─────────────────────────────────── */}
+          <header className="topbar">
+            {/* Left */}
+            <div className="topbar-left">
+              {/* Collapse toggle */}
+              <button
+                className="ibtn"
+                onClick={() => setCollapsed((c) => !c)}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              </button>
+
+              {/* Page title */}
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--text-1)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {pageTitle}
+              </div>
+            </div>
+
+            {/* Right */}
+            <div className="topbar-right">
+              {/* Threat level chip */}
+              <div
+                className="threat-pill"
+                style={{
+                  color: levelColor,
+                  background: levelDim,
+                  borderColor: levelBorder,
+                }}
+              >
+                <div
+                  className={`dot ${threat.level === "critical" ? "dot-red" : threat.level === "low" ? "dot-green" : "dot-yellow"}`}
+                />
+                {threat.level.toUpperCase()}
+                <span
+                  style={{
+                    color: "var(--text-3)",
+                    fontWeight: 400,
+                    fontSize: 10,
+                  }}
+                >
+                  &middot; TPI {threat.tpi}
+                </span>
+              </div>
+
+              {/* Alert count */}
+              {threat.activeAlerts > 0 && (
+                <div
+                  className="threat-pill"
+                  style={{
+                    color: "var(--red)",
+                    background: "var(--red-dim)",
+                    borderColor: "var(--red-border)",
+                  }}
+                >
+                  {threat.activeAlerts} alerts
+                </div>
+              )}
+
+              <div className="topbar-sep" />
+
+              <button
+                className="ibtn"
+                onClick={() => window.location.reload()}
+                title="Refresh data"
+              >
+                <ReloadOutlined />
+              </button>
+
+              <button
+                className="ibtn"
+                title="Notifications"
+                style={{ position: "relative" }}
+              >
+                <BellOutlined />
+                {threat.activeAlerts > 0 && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      width: 5,
+                      height: 5,
+                      background: "var(--red)",
+                      borderRadius: "50%",
+                    }}
+                  />
+                )}
+              </button>
+
+              <div className="topbar-sep" />
+
+              <Clock />
+
+              <div className="topbar-sep" />
+
+              {/* User menu */}
+              <Dropdown
+                menu={userMenu}
+                placement="bottomRight"
+                trigger={["click"]}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                    borderRadius: "var(--r-md)",
+                    transition: "background 0.12s",
+                  }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLElement).style.background =
+                      "var(--surface-3)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLElement).style.background =
+                      "transparent")
+                  }
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      background: "var(--green-dim)",
+                      border: "1px solid var(--green-border)",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--green)",
+                      fontSize: 12,
+                    }}
+                  >
+                    <UserOutlined />
                   </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <Text>
-                      TPI: <Text strong>{globalThreat.tpi}</Text>
-                    </Text>
-                    <Text>
-                      Active Alerts: <Text strong>{globalThreat.activeAlerts}</Text>
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: '12px' }} suppressHydrationWarning>
-                      Last Update: {new Date(globalThreat.lastUpdate).toLocaleTimeString()}
-                    </Text>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "var(--text-1)",
+                        lineHeight: 1,
+                      }}
+                    >
+                      Analyst
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "var(--text-3)",
+                        marginTop: 1,
+                      }}
+                    >
+                      Intel Ops
+                    </span>
                   </div>
                 </div>
-              }
-              type={globalThreat.level === 'critical' ? 'error' : 
-                    globalThreat.level === 'high' ? 'warning' : 
-                    globalThreat.level === 'medium' ? 'info' : 'success'}
-              showIcon={false}
-              style={{ flex: 1 }}
-            />
-          </div>
+              </Dropdown>
+            </div>
+          </header>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <Badge count={globalThreat.activeAlerts} size="small">
-              <Button 
-                type="text" 
-                icon={<BellOutlined />} 
-                style={{ color: isDarkMode ? '#ffffff' : '#000000' }}
-              />
-            </Badge>
-            
-            <Button 
-              type="text" 
-              icon={isDarkMode ? <BulbOutlined /> : <MoonOutlined />}
-              onClick={toggleTheme}
-              style={{ 
-                color: isDarkMode ? '#ffffff' : '#000000',
-                fontSize: '16px'
-              }}
-              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            />
-            
-            <Button 
-              type="text" 
-              icon={<SyncOutlined spin />} 
-              size="small"
-              onClick={() => window.location.reload()}
-              style={{ color: isDarkMode ? '#ffffff' : '#000000' }}
-            />
-            
-            <Dropdown
-              menu={{
-                items: userMenuItems,
-                onClick: handleUserMenuClick,
-              }}
-              placement="bottomRight"
-            >
-              <Space style={{ cursor: 'pointer' }}>
-                <Avatar size="small" icon={<UserOutlined />} />
-                <Text>{globalThreat.userRole}</Text>
-              </Space>
-            </Dropdown>
-          </div>
-        </Header>
+          {/* ── Scrollable page content ─────────────────── */}
+          <main className="page-scroll">{children}</main>
 
-        <Content style={{ 
-          margin: '24px',
-          padding: '24px',
-          background: themeStyles.contentBackground,
-          minHeight: 'calc(100vh - 112px)'
-        }}>
-          {children}
-        </Content>
-      </Layout>
-    </Layout>
+          {/* ── Footer ─────────────────────────────────── */}
+          <footer className="shell-footer">
+            <span>NTEWS v2.0 · Republic of Kenya · NIS</span>
+            <span>RESTRICTED // OFFICIAL USE ONLY</span>
+          </footer>
+        </div>
+      </div>
+    </div>
   );
 }
