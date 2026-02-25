@@ -1,6 +1,7 @@
 package com.ntews.intel.controller;
 
 import com.ntews.intel.model.IntelligenceReport;
+import com.ntews.intel.model.Prediction;
 import com.ntews.intel.service.IntelligenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -86,6 +87,16 @@ public class IntelligenceController {
         
         List<ThreatLocation> locations = intelligenceService.getThreatLocations(since);
         return ResponseEntity.ok(locations);
+    }
+    
+    @GetMapping("/predictions")
+    public ResponseEntity<List<Prediction>> getPredictions(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+            @RequestParam(defaultValue = "24") int hours) {
+        
+        List<Prediction> predictions = intelligenceService.getPredictions(type, since, hours);
+        return ResponseEntity.ok(predictions);
     }
     
     // DTOs

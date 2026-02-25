@@ -13,10 +13,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/action-points")
-@CrossOrigin(origins = "*")
+// Remove @CrossOrigin to avoid conflicts with API Gateway CORS configuration
 public class ActionPointController {
     
     private static final Logger logger = LoggerFactory.getLogger(ActionPointController.class);
@@ -402,12 +403,39 @@ public class ActionPointController {
             
             // Apply the AI recommendation by setting status to pending for human review
             actionPoint.setStatus(ActionPoint.ActionStatus.PENDING);
+            actionPoint.setUpdatedAt(LocalDateTime.now());
             
             ActionPoint updated = actionPointService.updateActionPoint(id, actionPoint);
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
             logger.error("Error applying AI recommendation for action point {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.status(500).build();
+        }
+    }
+    
+    // Reverse AI Recommendation
+    @PostMapping("/{id}/reverse-ai-recommendation")
+    public ResponseEntity<ActionPoint> reverseAIRecommendation(@PathVariable String id) {
+        try {
+            logger.info("REST request to reverse AI recommendation for action point: {}", id);
+            
+            Optional<ActionPoint> actionPointOpt = actionPointService.getActionPointById(id);
+            if (!actionPointOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            ActionPoint actionPoint = actionPointOpt.get();
+            
+            // Reverse the AI recommendation by clearing it and resetting status
+            actionPoint.setAiRecommendation(null);
+            actionPoint.setStatus(ActionPoint.ActionStatus.PENDING);
+            actionPoint.setUpdatedAt(LocalDateTime.now());
+            
+            ActionPoint updated = actionPointService.updateActionPoint(id, actionPoint);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            logger.error("Error reversing AI recommendation for action point {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(500).build();
         }
     }
     

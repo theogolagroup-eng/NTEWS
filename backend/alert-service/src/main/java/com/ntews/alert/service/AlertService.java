@@ -27,6 +27,8 @@ public interface AlertService {
     
     Alert resolveAlert(String id, String resolutionNotes);
     
+    Alert unresolveAlert(String id);
+    
     Alert assignAlert(String id, String assignedTo);
     
     AlertDashboardSummary getDashboardSummary();

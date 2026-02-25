@@ -1,6 +1,7 @@
 package com.ntews.alert.model;
 
 import org.springframework.data.mongodb.core.mapping.Field;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 
@@ -19,6 +20,7 @@ public class ActionItem {
     private String completedBy;
     
     @Field("completed_at")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime completedAt;
     
     @Field("requires_human_approval")
@@ -28,9 +30,11 @@ public class ActionItem {
     private boolean aiSuggested;
     
     @Field("created_at")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime createdAt;
     
     @Field("updated_at")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime updatedAt;
     
     // Constructors

@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,7 +32,9 @@ public class Alert {
     private String source;
     
     // Temporal and spatial information
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime timestamp;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime expiresAt;
     private LocationInfo location;
     private List<String> affectedAreas;
@@ -43,7 +46,9 @@ public class Alert {
     
     // Status and lifecycle
     private AlertStatus status;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime createdAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime updatedAt;
     private String createdBy;
     private String assignedTo;
@@ -57,6 +62,7 @@ public class Alert {
     private List<String> nlpRecommendations;
     private Double combinedRiskScore;
     private String priorityRecommendation;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime nlpAnalyzedAt;
     
     // AI Engine integration fields
@@ -83,10 +89,12 @@ public class Alert {
     // Verification and resolution
     private Boolean verified;
     private String verificationNotes;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime verifiedAt;
     private String verifiedBy;
     private Boolean resolved;
     private String resolutionNotes;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private LocalDateTime resolvedAt;
     private String resolvedBy;
     
@@ -199,9 +207,11 @@ public class Alert {
     @Builder
     public static class EscalationInfo {
         private Integer escalationLevel;
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
         private LocalDateTime escalatedAt;
         private String escalatedBy;
         private String escalationReason;
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
         private LocalDateTime nextEscalation;
         private List<String> escalationHistory;
     }
@@ -213,6 +223,7 @@ public class Alert {
     public static class NotificationInfo {
         private List<String> channels; // websocket, email, sms
         private List<String> recipients;
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
         private LocalDateTime lastNotified;
         private Integer notificationCount;
         private Boolean notificationSent;

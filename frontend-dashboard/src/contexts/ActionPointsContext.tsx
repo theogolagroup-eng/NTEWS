@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiClient } from '@/services/api';
+import { message } from 'antd';
 
 // Action Point Types
 export interface ActionPoint {
@@ -83,6 +84,7 @@ interface ActionPointsContextType {
   // AI Recommendations
   generateAIRecommendation: (context: any) => Promise<string>;
   applyAIRecommendation: (actionPointId: string) => Promise<void>;
+  reverseAIRecommendation: (actionPointId: string) => Promise<void>;
   
   // Filtering and Search
   getActionPointsByStatus: (status: ActionPoint['status']) => ActionPoint[];
@@ -271,6 +273,8 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       await apiClient.delete(API_ENDPOINTS.ACTION_POINTS.DELETE(id));
       setActionPoints(prev => prev.filter(ap => ap.id !== id));
+      
+      message.success('Action point deleted successfully');
     } catch (err) {
       setError('Failed to delete action point');
       console.error('Delete action point error:', err);
@@ -437,9 +441,34 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
           ap.id === actionPointId ? updatedActionPoint : ap
         )
       );
+      
+      message.success('AI recommendation applied successfully');
     } catch (err) {
       setError('Failed to apply AI recommendation');
       console.error('Apply AI recommendation error:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reverseAIRecommendation = async (actionPointId: string) => {
+    try {
+      setLoading(true);
+      
+      const response = await apiClient.post(`${API_ENDPOINTS.ACTION_POINTS.ACTION_POINT(actionPointId)}/reverse-ai-recommendation`);
+      const updatedActionPoint = response;
+      
+      setActionPoints(prev => 
+        prev.map(ap => 
+          ap.id === actionPointId ? updatedActionPoint : ap
+        )
+      );
+      
+      message.success('AI recommendation reversed successfully');
+    } catch (err) {
+      setError('Failed to reverse AI recommendation');
+      console.error('Reverse AI recommendation error:', err);
       throw err;
     } finally {
       setLoading(false);
@@ -483,6 +512,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     rejectActionPoint,
     generateAIRecommendation,
     applyAIRecommendation,
+    reverseAIRecommendation,
     getActionPointsByStatus,
     getActionPointsByAssignee,
     getActionPointsByPriority,

@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  
+  cloud:
+    gateway:
+      routes:
+        # Alert Service Routes
+        - id: alerts-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/alerts/**
+          filters:
+            - StripPrefix=0
+        
+        # Action Points Routes  
+        - id: action-points-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/action-points/**
+          filters:
+            - StripPrefix=0
+            
+        # Intelligence Service Routes (if exists)
+        - id: intelligence-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/intelligence/**
+          filters:
+            - StripPrefix=0
+
+# CORS Configuration
+  web:
+    cors:
+      allowed-origins: "http://localhost:3000"
+      allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+      allowed-headers: "*"
+      allow-credentials: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive: DEBUG

@@ -60,6 +60,7 @@ export default function ActionPointsPanel({
     actionPoints,
     createActionPoint,
     updateActionPoint,
+    deleteActionPoint,
     assignActionPoint,
     completeActionPoint,
     approveActionPoint,
@@ -92,6 +93,34 @@ export default function ActionPointsPanel({
     return false;
   });
 
+  const getStatusColor = (status: ActionPoint["status"]) => {
+    const colors = {
+      completed: 'green',
+      in_progress: 'blue',
+      pending: 'orange',
+      cancelled: 'default'
+    };
+    return colors[status] || 'default';
+  };
+
+  const getPriorityColor = (priority: ActionPoint["priority"]) => {
+    const colors = {
+      critical: 'red',
+      high: 'orange',
+      medium: 'gold',
+      low: 'green'
+    };
+    return colors[priority] || 'default';
+  };
+
+  const formatDate = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleString();
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
   const getStatusIcon = (status: ActionPoint["status"]) => {
     switch (status) {
       case "completed":
@@ -104,21 +133,6 @@ export default function ActionPointsPanel({
         return <DeleteOutlined style={{ color: "#ff4d4f" }} />;
       default:
         return <ClockCircleOutlined style={{ color: "#8c8c8c" }} />;
-    }
-  };
-
-  const getPriorityColor = (priority: ActionPoint["priority"]) => {
-    switch (priority) {
-      case "critical":
-        return "red";
-      case "high":
-        return "orange";
-      case "medium":
-        return "gold";
-      case "low":
-        return "green";
-      default:
-        return "default";
     }
   };
 
@@ -231,6 +245,15 @@ export default function ActionPointsPanel({
     }
   };
 
+  const handleDeleteAction = async (actionId: string) => {
+    try {
+      await deleteActionPoint(actionId);
+      message.success("Action point deleted successfully");
+    } catch (error) {
+      message.error("Failed to delete action point");
+    }
+  };
+
   const showActionDetails = (action: ActionPoint) => {
     setSelectedAction(action);
     detailForm.setFieldsValue({
@@ -247,7 +270,7 @@ export default function ActionPointsPanel({
 
   return (
     <div>
-      {/* Header */}
+      {/* Simple header matching alerts page style */}
       <div
         style={{
           display: "flex",
@@ -256,32 +279,25 @@ export default function ActionPointsPanel({
           marginBottom: "16px",
         }}
       >
-        <div>
-          <h3
-            style={{
-              color: themeStyles.textColor,
-              margin: 0,
-              fontSize: "16px",
-              fontWeight: "600",
-            }}
-          >
-            Action Points
-          </h3>
-          <p
-            style={{
-              color: themeStyles.secondaryTextColor,
-              margin: 0,
-              fontSize: "12px",
-            }}
-          >
-            {relatedActionPoints.length} active actions
-          </p>
-        </div>
+        <h3
+          style={{
+            color: themeStyles.textColor,
+            margin: 0,
+            fontSize: "16px",
+            fontWeight: "600",
+            textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+          }}
+        >
+          Action Points ({relatedActionPoints.length})
+        </h3>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => setShowCreateModal(true)}
-          size="small"
+          style={{
+            background: "#1890ff",
+            borderColor: "#1890ff",
+          }}
         >
           Create Action
         </Button>
@@ -298,7 +314,7 @@ export default function ActionPointsPanel({
               border: themeStyles.cardBorder,
               marginBottom: "8px",
             }}
-            bodyStyle={{ padding: "12px" }}
+            styles={{ body: { padding: "12px" } }}
           >
             <div
               style={{
@@ -323,13 +339,17 @@ export default function ActionPointsPanel({
                       color: themeStyles.textColor,
                       fontWeight: "600",
                       fontSize: "14px",
+                      textShadow: "0 1px 2px rgba(0,0,0,0.8)",
                     }}
                   >
                     {action.title}
                   </span>
-                  <span className={`priority-tag priority-${action.priority.toLowerCase()}`}>
-                    {action.priority.toUpperCase()}
-                  </span>
+                  <Tag color={getPriorityColor(action.priority)}>
+                    {action.priority?.toUpperCase()}
+                  </Tag>
+                  <Tag color={getStatusColor(action.status)}>
+                    {action.status?.replace('_', ' ').toUpperCase()}
+                  </Tag>
                   {action.autoTriggered && (
                     <Tooltip title="AI-triggered action">
                       <RobotOutlined style={{ color: "#722ed1" }} />
@@ -341,7 +361,10 @@ export default function ActionPointsPanel({
                   style={{
                     color: themeStyles.secondaryTextColor,
                     margin: "4px 0",
-                    fontSize: "12px",
+                    fontSize: "13px",
+                    fontWeight: "400",
+                    textShadow: "0 1px 1px rgba(0,0,0,0.5)",
+                    lineHeight: "1.4",
                   }}
                 >
                   {action.description}
@@ -372,15 +395,20 @@ export default function ActionPointsPanel({
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
-                    fontSize: "11px",
+                    fontSize: "12px",
                   }}
                 >
-                  <span style={{ color: themeStyles.secondaryTextColor }}>
-                    Created: {new Date(action.createdAt).toLocaleDateString()}
+                  <span style={{ color: themeStyles.secondaryTextColor, textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>
+                    Created: {formatDate(action.createdAt)}
                   </span>
                   {action.assignedTo && (
-                    <span style={{ color: themeStyles.secondaryTextColor }}>
+                    <span style={{ color: themeStyles.secondaryTextColor, textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>
                       • Assigned to: {action.assignedTo}
+                    </span>
+                  )}
+                  {action.dueDate && (
+                    <span style={{ color: themeStyles.secondaryTextColor, textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>
+                      • Due: {formatDate(action.dueDate)}
                     </span>
                   )}
                   {action.humanApprovalRequired && (
@@ -443,6 +471,16 @@ export default function ActionPointsPanel({
                     />
                   </Tooltip>
                 )}
+
+                <Tooltip title="Delete Action Point">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleDeleteAction(action.id)}
+                    danger
+                  />
+                </Tooltip>
               </div>
             </div>
           </Card>
@@ -482,10 +520,14 @@ export default function ActionPointsPanel({
           layout="vertical"
           onFinish={handleCreateAction}
           style={{ color: "#e6edf3" }}
+          initialValues={{
+            humanApprovalRequired: false,
+            autoTriggered: false
+          }}
         >
           <Form.Item
             name="title"
-            label={<span style={{ color: "#8b949e" }}>Action Title</span>}
+            label={<span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>Action Title</span>}
             rules={[{ required: true, message: "Please enter action title" }]}
           >
             <Input
@@ -500,7 +542,7 @@ export default function ActionPointsPanel({
 
           <Form.Item
             name="description"
-            label={<span style={{ color: "#8b949e" }}>Description</span>}
+            label={<span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>Description</span>}
             rules={[{ required: true, message: "Please enter description" }]}
           >
             <TextArea
@@ -518,7 +560,7 @@ export default function ActionPointsPanel({
             <Col span={12}>
               <Form.Item
                 name="type"
-                label={<span style={{ color: "#8b949e" }}>Action Type</span>}
+                label={<span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>Action Type</span>}
                 rules={[
                   { required: true, message: "Please select action type" },
                 ]}
@@ -547,8 +589,10 @@ export default function ActionPointsPanel({
             <Col span={12}>
               <Form.Item
                 name="priority"
-                label={<span style={{ color: "#8b949e" }}>Priority</span>}
-                rules={[{ required: true, message: "Please select priority" }]}
+                label={<span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>Priority</span>}
+                rules={[
+                  { required: true, message: "Please select priority" },
+                ]}
               >
                 <Select
                   placeholder="Select priority"
@@ -574,7 +618,7 @@ export default function ActionPointsPanel({
           <Form.Item
             name="dueDate"
             label={
-              <span style={{ color: "#8b949e" }}>Due Date (Optional)</span>
+              <span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>Due Date (Optional)</span>
             }
           >
             <DatePicker
@@ -592,14 +636,13 @@ export default function ActionPointsPanel({
               <Form.Item
                 name="humanApprovalRequired"
                 label={
-                  <span style={{ color: "#8b949e" }}>
+                  <span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>
                     Human Approval Required
                   </span>
                 }
                 valuePropName="checked"
               >
                 <Select
-                  defaultValue={false}
                   style={{ width: "100%" }}
                   styles={{
                     popup: {
@@ -618,11 +661,10 @@ export default function ActionPointsPanel({
             <Col span={12}>
               <Form.Item
                 name="autoTriggered"
-                label={<span style={{ color: "#8b949e" }}>Auto-triggered</span>}
+                label={<span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>Auto-triggered</span>}
                 valuePropName="checked"
               >
                 <Select
-                  defaultValue={false}
                   style={{ width: "100%" }}
                   styles={{
                     popup: {
@@ -696,18 +738,19 @@ export default function ActionPointsPanel({
               <p style={{ color: "#8b949e", marginBottom: "8px" }}>
                 {selectedAction.description}
               </p>
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 <Tag color={getPriorityColor(selectedAction.priority)}>
-                  {selectedAction.priority.toUpperCase()}
+                  {selectedAction.priority?.toUpperCase()}
                 </Tag>
-                <Tag>{selectedAction.type.toUpperCase()}</Tag>
-                <Tag
-                  color={
-                    selectedAction.status === "completed" ? "green" : "blue"
-                  }
-                >
-                  {selectedAction.status.replace("_", " ").toUpperCase()}
+                <Tag>{selectedAction.type?.toUpperCase()}</Tag>
+                <Tag color={getStatusColor(selectedAction.status)}>
+                  {selectedAction.status?.replace('_', ' ').toUpperCase()}
                 </Tag>
+              </div>
+              <div style={{ marginTop: "8px", fontSize: "12px", color: "#8b949e" }}>
+                <div>Created: {formatDate(selectedAction.createdAt)}</div>
+                {selectedAction.dueDate && <div>Due: {formatDate(selectedAction.dueDate)}</div>}
+                {selectedAction.assignedTo && <div>Assigned to: {selectedAction.assignedTo}</div>}
               </div>
             </div>
 
@@ -724,7 +767,7 @@ export default function ActionPointsPanel({
               <Form.Item
                 name="humanNotes"
                 label={
-                  <span style={{ color: "#8b949e" }}>Human Analyst Notes</span>
+                  <span style={{ color: themeStyles.textColor, fontWeight: "500", textShadow: "0 1px 1px rgba(0,0,0,0.5)" }}>Human Analyst Notes</span>
                 }
               >
                 <TextArea

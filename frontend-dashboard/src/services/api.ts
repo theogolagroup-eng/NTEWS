@@ -1,11 +1,12 @@
-// API Service Configuration for NTEWS Frontend
-// All API calls should go through the API Gateway at localhost:8080
+// API Configuration and Client
+import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080';
+// Base API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 // API Endpoints
 export const API_ENDPOINTS = {
-  // Auth Service
+  // Authentication Service
   AUTH: {
     LOGIN: `${API_BASE_URL}/api/auth/login`,
     LOGOUT: `${API_BASE_URL}/api/auth/logout`,
@@ -23,6 +24,16 @@ export const API_ENDPOINTS = {
     VERIFY: (id: string) => `${API_BASE_URL}/api/intelligence/reports/${id}/verify`,
     THREAT_TRENDS: `${API_BASE_URL}/api/intelligence/threat-trends`,
     THREAT_MAP: `${API_BASE_URL}/api/intelligence/threat-map`,
+    PREDICTIONS: `${API_BASE_URL}/api/intelligence/predictions`,
+  },
+  
+  // AI Engine Service (through API Gateway)
+  AI_ENGINE: {
+    PREDICT: `${API_BASE_URL}/api/ai/predict`,
+    ANALYZE: `${API_BASE_URL}/api/ai/analyze`,
+    RECOMMEND: `${API_BASE_URL}/api/ai/recommend`,
+    CLASSIFY: `${API_BASE_URL}/api/ai/classify`,
+    FORECAST: `${API_BASE_URL}/api/ai/forecast`,
   },
   
   // Alert Service
@@ -45,156 +56,128 @@ export const API_ENDPOINTS = {
     NLP_ANALYZE_ALERT: (id: string) => `${API_BASE_URL}/api/alerts/${id}/nlp-analyze`,
   },
   
-  // Action Points Service (integrated with Alert Service - port 8081)
+  // Action Points Service (integrated with Alert Service)
   ACTION_POINTS: {
-    ALL: `http://localhost:8081/api/action-points`,
-    ACTION_POINT: (id: string) => `http://localhost:8081/api/action-points/${id}`,
-    CREATE: `http://localhost:8081/api/action-points`,
-    UPDATE: (id: string) => `http://localhost:8081/api/action-points/${id}`,
-    DELETE: (id: string) => `http://localhost:8081/api/action-points/${id}`,
-    ASSIGN: (id: string) => `http://localhost:8081/api/action-points/${id}/assign`,
-    COMPLETE: (id: string) => `http://localhost:8081/api/action-points/${id}/complete`,
-    APPROVE: (id: string) => `http://localhost:8081/api/action-points/${id}/approve`,
-    REJECT: (id: string) => `http://localhost:8081/api/action-points/${id}/reject`,
-    BY_STATUS: (status: string) => `http://localhost:8081/api/action-points/status/${status}`,
-    BY_ASSIGNEE: (assignee: string) => `http://localhost:8081/api/action-points/assigned/${assignee}`,
-    BY_PRIORITY: (priority: string) => `http://localhost:8081/api/action-points/priority/${priority}`,
-    SEARCH: `http://localhost:8081/api/action-points/search`,
-    FOR_ALERT: (alertId: string) => `http://localhost:8081/api/action-points/alert/${alertId}`,
-    TRIGGER_FOR_ALERT: (alertId: string) => `http://localhost:8081/api/action-points/alert/${alertId}/trigger`,
-    DASHBOARD_SUMMARY: `http://localhost:8081/api/action-points/dashboard/summary`,
-    RECENT: `http://localhost:8081/api/action-points/recent`,
-    AI_RECOMMENDATION: (id: string) => `http://localhost:8081/api/action-points/${id}/ai-recommendation`,
-    APPLY_AI_RECOMMENDATION: (id: string) => `http://localhost:8081/api/action-points/${id}/apply-ai-recommendation`,
+    ALL: `${API_BASE_URL}/api/action-points`,
+    ACTION_POINT: (id: string) => `${API_BASE_URL}/api/action-points/${id}`,
+    CREATE: `${API_BASE_URL}/api/action-points`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/action-points/${id}`,
+    DELETE: (id: string) => `${API_BASE_URL}/api/action-points/${id}`,
+    ASSIGN: (id: string) => `${API_BASE_URL}/api/action-points/${id}/assign`,
+    COMPLETE: (id: string) => `${API_BASE_URL}/api/action-points/${id}/complete`,
+    APPROVE: (id: string) => `${API_BASE_URL}/api/action-points/${id}/approve`,
+    REJECT: (id: string) => `${API_BASE_URL}/api/action-points/${id}/reject`,
+    BY_STATUS: (status: string) => `${API_BASE_URL}/api/action-points/status/${status}`,
+    BY_ALERT: (alertId: string) => `${API_BASE_URL}/api/action-points/alert/${alertId}`,
+    BY_THREAT: (threatId: string) => `${API_BASE_URL}/api/action-points/threat/${threatId}`,
+    BY_HOTSPOT: (hotspotId: string) => `${API_BASE_URL}/api/action-points/hotspot/${hotspotId}`,
+    CREATE_BULK: `${API_BASE_URL}/api/action-points/bulk`,
+    UPDATE_BULK: `${API_BASE_URL}/api/action-points/bulk/update`,
+    DELETE_BULK: `${API_BASE_URL}/api/action-points/bulk/delete`,
+    STATISTICS: `${API_BASE_URL}/api/action-points/statistics`,
+    ESCALATE: (id: string) => `${API_BASE_URL}/api/action-points/${id}/escalate`,
+    DELEGATE: (id: string) => `${API_BASE_URL}/api/action-points/${id}/delegate`,
+    SEARCH: `${API_BASE_URL}/api/action-points/search`,
+    TRIGGER_FOR_ALERT: (alertId: string) => `${API_BASE_URL}/api/action-points/trigger/${alertId}`,
+    AI_RECOMMENDATION: (id: string) => `${API_BASE_URL}/api/action-points/${id}/ai-recommendation`,
+    APPLY_AI_RECOMMENDATION: (id: string) => `${API_BASE_URL}/api/action-points/${id}/apply-ai-recommendation`,
   },
-  
-  // Prediction Service
-  PREDICTIONS: {
-    DASHBOARD: `${API_BASE_URL}/api/predictions/dashboard/summary`,
-    FORECASTS: `${API_BASE_URL}/api/predictions/forecasts`,
-    FORECAST: (id: string) => `${API_BASE_URL}/api/predictions/forecasts/${id}`,
-    CURRENT_FORECAST: `${API_BASE_URL}/api/predictions/forecasts/current`,
-    HOTSPOTS: `${API_BASE_URL}/api/predictions/hotspots`,
-    HOTSPOT: (id: string) => `${API_BASE_URL}/api/predictions/hotspots/${id}`,
-    RISK_TRENDS: `${API_BASE_URL}/api/predictions/risk-trends`,
-    LOCATION_RISK: `${API_BASE_URL}/api/predictions/location-risk`,
-    GENERATE_FORECAST: `${API_BASE_URL}/api/predictions/generate-forecast`,
-    // AI Engine Integration
-    AI_ENGINE_HEALTH: `${API_BASE_URL}/api/ai-engine/health`,
-    AI_ENGINE_MODELS: `${API_BASE_URL}/api/ai-engine/models`,
-    AI_ENGINE_STATS: `${API_BASE_URL}/api/ai-engine/stats`,
-    AI_ENGINE_CAPABILITIES: `${API_BASE_URL}/api/ai-engine/capabilities`,
-    AI_ENGINE_PREDICTION_ANALYSIS: `${API_BASE_URL}/api/ai-engine/prediction-analysis`,
-  },
-  
-  // Ingestion Service
-  INGESTION: {
-    STATUS: `${API_BASE_URL}/api/ingestion/status`,
-    SOCIAL_MEDIA: `${API_BASE_URL}/api/ingestion/social-media`,
-    CCTV: `${API_BASE_URL}/api/ingestion/cctv`,
-    CYBER_FEED: `${API_BASE_URL}/api/ingestion/cyber-feed`,
-    START_BATCH: `${API_BASE_URL}/api/ingestion/start-batch`,
-  },
-  
-  // AI Engine (Direct access through Gateway)
-  AI_ENGINE: {
-    HEALTH: `${API_BASE_URL}/health`,
-    ROOT: `${API_BASE_URL}/root`,
-    ANALYZE: `${API_BASE_URL}/analyze`,
-    PREDICT: `${API_BASE_URL}/predict`,
-    PREDICT_HOTSPOTS: `${API_BASE_URL}/predict/hotspots`,
-    PREDICTION_ANALYSIS: `${API_BASE_URL}/prediction-analysis`,
-    STATS: `${API_BASE_URL}/stats`,
-    MODELS: `${API_BASE_URL}/models`,
-    CAPABILITIES: `${API_BASE_URL}/capabilities`,
-    // NLP Endpoints
-    NLP_ANALYZE_TEXT: `${API_BASE_URL}/nlp/analyze-text`,
-    NLP_ANALYZE_ALERT: `${API_BASE_URL}/nlp/analyze-alert`,
-    NLP_BATCH_ANALYZE: `${API_BASE_URL}/nlp/batch-analyze`,
-    NLP_CAPABILITIES: `${API_BASE_URL}/nlp/capabilities`,
-  }
 };
 
-// API Client with error handling and authentication
-export class ApiClient {
-  private baseUrl: string;
+// API Client Class
+class ApiClient {
+  private baseURL: string;
   private authToken: string | null = null;
-  
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
+
+  constructor(baseURL: string = API_BASE_URL) {
+    this.baseURL = baseURL;
   }
-  
-  // Authentication methods
+
   setAuthToken(token: string) {
     this.authToken = token;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token);
+    }
   }
-  
+
   clearAuthToken() {
     this.authToken = null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+    }
   }
-  
+
   getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
+
     if (this.authToken) {
       headers['Authorization'] = `Bearer ${this.authToken}`;
     }
-    
+
     return headers;
   }
-  
-  async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+
+  async request<T = any>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+    const config: RequestInit = {
+      headers: this.getAuthHeaders(),
+      ...options,
+    };
+
     try {
-      const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          ...this.getAuthHeaders(),
-          ...options.headers,
-        },
-        ...options,
-      });
+      const response = await fetch(url, config);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API Error: ${response.status} - ${JSON.stringify(errorData)}`);
       }
-      
-      return await response.json();
+
+      // Handle empty responses (like DELETE requests)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else if (response.status === 204 || response.status === 200) {
+        // For DELETE requests that return empty body
+        return {} as T;
+      } else {
+        return await response.json();
+      }
     } catch (error) {
-      console.error('API Request failed:', error);
+      console.error('API request failed:', error);
       throw error;
     }
   }
-  
-  async get(endpoint: string): Promise<any> {
-    return this.request(endpoint, { method: 'GET' });
+
+  async get<T = any>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
   }
-  
-  async post(endpoint: string, data?: any): Promise<any> {
-    return this.request(endpoint, {
+
+  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: JSON.stringify(data),
     });
   }
-  
-  async put(endpoint: string, data?: any): Promise<any> {
-    return this.request(endpoint, {
+
+  async put<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: JSON.stringify(data),
     });
   }
-  
-  async delete(endpoint: string): Promise<any> {
-    return this.request(endpoint, { method: 'DELETE' });
+
+  async delete<T = any>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
   }
-  
-  // Authentication specific methods
-  async login(credentials: { username: string; password: string }): Promise<any> {
+
+  async login(credentials: { username: string; password: string }) {
     try {
-      const response = await this.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+      const response = await this.post('/api/auth/login', credentials);
       if (response.token) {
         this.setAuthToken(response.token);
       }
@@ -204,30 +187,96 @@ export class ApiClient {
       throw error;
     }
   }
-  
-  async logout(): Promise<any> {
+
+  async logout() {
     try {
-      const response = await this.post(API_ENDPOINTS.AUTH.LOGOUT);
-      this.clearAuthToken();
-      return response;
+      await this.post('/api/auth/logout');
     } catch (error) {
       console.error('Logout failed:', error);
-      this.clearAuthToken(); // Clear token even if request fails
-      throw error;
+    } finally {
+      this.clearAuthToken();
     }
   }
-  
-  async validateToken(): Promise<any> {
+
+  async validateToken() {
     if (!this.authToken) {
-      throw new Error('No authentication token available');
+      return { valid: false, user: null };
     }
-    return this.get(API_ENDPOINTS.AUTH.VALIDATE);
+
+    try {
+      const response = await this.get('/api/auth/validate');
+      return { valid: true, user: response.user };
+    } catch (error) {
+      this.clearAuthToken();
+      return { valid: false, user: null };
+    }
   }
 }
 
-// Create API client instances
+// Create and export API client instance
 export const apiClient = new ApiClient();
-export const aiEngineClient = new ApiClient('http://localhost:8000');
 
-// Export default API client
+// AI Engine Client Class
+class AiEngineClient {
+  private baseURL: string;
+
+  constructor(baseURL: string = 'http://localhost:8080') {
+    this.baseURL = baseURL;
+  }
+
+  async request<T = any>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...options,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`AI Engine Error: ${response.status} - ${JSON.stringify(errorData)}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('AI Engine request failed:', error);
+      throw error;
+    }
+  }
+
+  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async get<T = any>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
+  }
+}
+
+// Create and export AI Engine client instance
+export const aiEngineClient = new AiEngineClient();
+
+// Export individual API methods for convenience
+export const api = {
+  get: <T = any>(endpoint: string) => apiClient.get<T>(endpoint),
+  post: <T = any>(endpoint: string, data?: any) => apiClient.post<T>(endpoint, data),
+  put: <T = any>(endpoint: string, data?: any) => apiClient.put<T>(endpoint, data),
+  delete: <T = any>(endpoint: string) => apiClient.delete<T>(endpoint),
+  login: (credentials: { username: string; password: string }) => apiClient.login(credentials),
+  logout: () => apiClient.logout(),
+  validateToken: () => apiClient.validateToken(),
+  setAuthToken: (token: string) => apiClient.setAuthToken(token),
+  clearAuthToken: () => apiClient.clearAuthToken(),
+};
+
 export default apiClient;

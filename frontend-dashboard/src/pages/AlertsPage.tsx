@@ -20,7 +20,9 @@ import {
   Alert,
   Timeline,
   Tabs,
-  Progress
+  Progress,
+  message,
+  notification
 } from 'antd';
 import {
   ExclamationCircleOutlined,
@@ -57,6 +59,8 @@ interface Alert {
     longitude: string;
   };
   timestamp: string;
+  createdAt: string;
+  updatedAt: string;
   confidence: number;
   threatLevel: string;
   assignedTo?: string;
@@ -77,6 +81,8 @@ export default function AlertsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [assignTo, setAssignTo] = useState('');
   const [filters, setFilters] = useState({
     severity: '',
     status: '',
@@ -132,6 +138,8 @@ export default function AlertsPage() {
             longitude: '36.8219'
           },
           timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           confidence: 0.82,
           threatLevel: 'high',
           aiAnalysis: {
@@ -155,6 +163,8 @@ export default function AlertsPage() {
             longitude: '36.8172'
           },
           timestamp: new Date(Date.now() - 3600000).toISOString(),
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          updatedAt: new Date(Date.now() - 1800000).toISOString(),
           confidence: 0.78,
           threatLevel: 'medium',
           assignedTo: 'John Doe',
@@ -201,20 +211,239 @@ export default function AlertsPage() {
       await apiClient.post(`${API_ENDPOINTS.ALERTS.UPDATE(alertId)}/acknowledge`);
       fetchAlerts();
       fetchStatistics();
+      message.success('Alert acknowledged successfully');
     } catch (error) {
       console.error('Failed to acknowledge alert:', error);
+      message.error('Failed to acknowledge alert');
     }
   };
 
-  const handleResolve = async (alertId: string, notes: string) => {
+  const handleResolve = async (alertId: string) => {
+    const notes = prompt('Please enter resolution notes:');
+    if (notes === null) return; // User cancelled
+    
     try {
-      await apiClient.post(`${API_ENDPOINTS.ALERTS.UPDATE(alertId)}/resolve`, { resolutionNotes: notes });
-      fetchAlerts();
-      fetchStatistics();
-      setDetailModalVisible(false);
+      setLoading(true);
+      const response = await apiClient.post(`${API_ENDPOINTS.ALERTS.UPDATE(alertId)}/resolve`, { resolutionNotes: notes });
+      
+      // Handle response data properly - check if response is the alert itself or wrapped
+      const resolvedAlert = response.data || response;
+      
+      // Show success notification with more details
+      message.success('Alert resolved successfully!', 4);
+      
+      // Show resolved alert in a more prominent way
+      if (resolvedAlert) {
+        showResolvedAlertNotification(resolvedAlert, notes);
+      } else {
+        // Fallback if no alert data returned
+        message.info(`Alert ${alertId} has been resolved with notes: ${notes}`, 4);
+      }
+      
     } catch (error) {
       console.error('Failed to resolve alert:', error);
+      
+      // Graceful error handling
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to resolve alert';
+      
+      message.error(`Resolution Failed: ${errorMessage}`, 5);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleUnresolve = async (alertId: string) => {
+    const confirm = window.confirm('Are you sure you want to mark this alert as unresolved? This will change its status back to ACTIVE.');
+    if (!confirm) return;
+    
+    try {
+      setLoading(true);
+      const response = await apiClient.post(`${API_ENDPOINTS.ALERTS.UPDATE(alertId)}/unresolve`);
+      
+      // Handle response data properly
+      const unresolvedAlert = response.data || response;
+      
+      // Show success notification
+      message.success('Alert unresolved successfully!', 4);
+      
+      // Refresh data
+      await Promise.all([fetchAlerts(), fetchStatistics()]);
+      
+      // Show unresolve notification
+      showUnresolvedAlertNotification(unresolvedAlert);
+      
+    } catch (error) {
+      console.error('Failed to unresolve alert:', error);
+      
+      // Graceful error handling
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to unresolve alert';
+      
+      message.error(`Unresolve Failed: ${errorMessage}`, 5);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showResolvedAlertNotification = (resolvedAlert: Alert, notes: string) => {
+    // Create a temporary notification for the resolved alert
+    if (!resolvedAlert || !resolvedAlert.id) {
+      console.error('Invalid resolved alert data:', resolvedAlert);
+      message.error('Unable to show resolution notification - invalid alert data');
+      return;
+    }
+    
+    const notificationKey = `resolved-${resolvedAlert.id}`;
+    
+    notification.success({
+      message: '✅ Alert Resolved',
+      description: (
+        <div>
+          <div><strong>{resolvedAlert.title || 'Unknown Alert'}</strong></div>
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+            Notes: {notes || 'No notes provided'}
+          </div>
+          <div style={{ fontSize: '12px', color: '#52c41a', marginTop: '4px' }}>
+            Status: RESOLVED
+          </div>
+        </div>
+      ),
+      duration: 6,
+      key: notificationKey,
+      placement: 'topRight',
+    });
+  };
+
+  const showUnresolvedAlertNotification = (unresolvedAlert: Alert) => {
+    // Create a temporary notification for the unresolved alert
+    if (!unresolvedAlert || !unresolvedAlert.id) {
+      console.error('Invalid unresolved alert data:', unresolvedAlert);
+      message.error('Unable to show unresolve notification - invalid alert data');
+      return;
+    }
+    
+    const notificationKey = `unresolved-${unresolvedAlert.id}`;
+    
+    notification.info({
+      message: '↩️ Alert Unresolved',
+      description: (
+        <div>
+          <div><strong>{unresolvedAlert.title || 'Unknown Alert'}</strong></div>
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+            Alert has been marked as active again
+          </div>
+          <div style={{ fontSize: '12px', color: '#1890ff', marginTop: '4px' }}>
+            Status: ACTIVE
+          </div>
+        </div>
+      ),
+      duration: 5,
+      key: notificationKey,
+      placement: 'topRight',
+    });
+  };
+
+  const showResolutionDetails = (alert: Alert) => {
+    Modal.info({
+      title: 'Resolution Details',
+      width: 600,
+      content: (
+        <div>
+          <p><strong>Alert:</strong> {alert.title}</p>
+          <p><strong>Status:</strong> <Tag color="green">RESOLVED</Tag></p>
+          <p><strong>Severity:</strong> <Tag color={getSeverityColor(alert.severity)}>{alert.severity?.toUpperCase()}</Tag></p>
+          <p><strong>Category:</strong> {alert.category}</p>
+          <p><strong>Location:</strong> {alert.location?.address}</p>
+          <p><strong>Confidence:</strong> <Progress percent={Math.round((alert.confidence || 0) * 100)} size="small" strokeColor="#52c41a" /></p>
+          <p><strong>AI Analysis:</strong></p>
+          <div style={{ 
+            backgroundColor: '#f6ffed', 
+            border: '1px solid #b7eb8f', 
+            borderRadius: '4px', 
+            padding: '12px',
+            marginTop: '8px'
+          }}>
+            <p><strong>Key Factors:</strong></p>
+            <ul>
+              {alert.aiAnalysis?.keyFactors?.map((factor, index) => (
+                <li key={index}>{factor}</li>
+              ))}
+            </ul>
+            <p><strong>Recommended Actions:</strong></p>
+            <ul>
+              {alert.aiAnalysis?.recommendedActions?.map((action, index) => (
+                <li key={index}>{action}</li>
+              ))}
+            </ul>
+          </div>
+          {alert.resolvedAt && (
+            <p><strong>Resolved At:</strong> {new Date(alert.resolvedAt).toLocaleString()}</p>
+          )}
+        </div>
+      ),
+    });
+  };
+
+  const handleAssign = async (alertId: string) => {
+    setSelectedAlert(alerts.find(alert => alert.id === alertId) || null);
+    setAssignModalVisible(true);
+  };
+
+  const handleAssignSubmit = async () => {
+    if (!selectedAlert || !assignTo.trim()) {
+      message.error('Please enter a valid assignee');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await apiClient.post(`${API_ENDPOINTS.ALERTS.UPDATE(selectedAlert.id)}/assign`, { assignedTo: assignTo.trim() });
+      
+      // Show success notification with more details
+      message.success(`Alert assigned successfully to ${assignTo.trim()}!`, 4);
+      
+      // Refresh data
+      await Promise.all([fetchAlerts(), fetchStatistics()]);
+      
+      // Show assigned alert notification
+      showAssignedAlertNotification(response.data, assignTo.trim());
+      
+      // Close modal
+      setAssignModalVisible(false);
+      setAssignTo('');
+      setSelectedAlert(null);
+      
+    } catch (error) {
+      console.error('Failed to assign alert:', error);
+      
+      // Graceful error handling
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to assign alert';
+      
+      message.error(`Assignment Failed: ${errorMessage}`, 5);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showAssignedAlertNotification = (assignedAlert: Alert, assignedTo: string) => {
+    const notificationKey = `assigned-${assignedAlert.id}`;
+    
+    notification.success({
+      message: '👤 Alert Assigned',
+      description: (
+        <div>
+          <div><strong>{assignedAlert.title}</strong></div>
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+            Assigned to: {assignedTo}
+          </div>
+          <div style={{ fontSize: '12px', color: '#1890ff', marginTop: '4px' }}>
+            Status: ASSIGNED
+          </div>
+        </div>
+      ),
+      duration: 5,
+      key: notificationKey,
+      placement: 'topRight',
+    });
   };
 
   const getSeverityColor = (severity: string) => {
@@ -254,6 +483,18 @@ export default function AlertsPage() {
       key: 'title',
       render: (text: string, record: Alert) => (
         <Space>
+          {record.status === 'resolved' && (
+            <Badge 
+              count="RESOLVED" 
+              style={{ 
+                backgroundColor: '#52c41a',
+                color: 'white',
+                fontSize: '10px',
+                padding: '2px 6px',
+                borderRadius: '4px'
+              }} 
+            />
+          )}
           <ExclamationCircleOutlined style={{ color: record.severity === 'critical' ? '#ff4d4f' : '#fa8c16' }} />
           <div>
             <div style={{ fontWeight: 'bold' }}>{text}</div>
@@ -278,11 +519,49 @@ export default function AlertsPage() {
       onFilter: (value, record) => record.severity === value,
     },
     {
+      title: 'Threat Level',
+      dataIndex: 'threatLevel',
+      key: 'threatLevel',
+      render: (threatLevel: string) => {
+        if (!threatLevel) return <Tag color="default">UNKNOWN</Tag>;
+        
+        const threatColors: Record<string, string> = {
+          'critical': 'red',
+          'high': 'orange', 
+          'medium': 'gold',
+          'low': 'green',
+          'unknown': 'default'
+        };
+        
+        const color = threatColors[threatLevel.toLowerCase()] || 'default';
+        return (
+          <Tag color={color} style={{ fontWeight: 'bold', fontSize: '12px' }}>
+            {threatLevel.toUpperCase()}
+          </Tag>
+        );
+      },
+    },
+    {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>{status?.toUpperCase() || 'UNKNOWN'}</Tag>
+      render: (status: string, record: Alert) => (
+        <Space>
+          {status === 'resolved' && (
+            <Badge 
+              count="✅ RESOLVED" 
+              style={{ 
+                backgroundColor: '#52c41a',
+                color: 'white',
+                fontSize: '11px',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                fontWeight: 'bold'
+              }} 
+            />
+          )}
+          <Tag color={getStatusColor(status)}>{status?.toUpperCase() || 'UNKNOWN'}</Tag>
+        </Space>
       ),
       filters: [
         { text: 'Active', value: 'active' },
@@ -327,12 +606,53 @@ export default function AlertsPage() {
       title: 'Time',
       dataIndex: 'timestamp',
       key: 'timestamp',
-      render: (timestamp: string) => (
-        <Space>
-          <ClockCircleOutlined />
-          <span>{new Date(timestamp).toLocaleString()}</span>
-        </Space>
+      render: (timestamp: string, record: Alert) => {
+        // Use timestamp if available, otherwise use createdAt
+        const dateToUse = timestamp || record.createdAt;
+        if (!dateToUse) {
+          return <span>No Time</span>;
+        }
+        try {
+          const date = new Date(dateToUse);
+          if (isNaN(date.getTime())) {
+            return <span>Invalid Date</span>;
+          }
+          return (
+            <Space>
+              <ClockCircleOutlined />
+              <span>{date.toLocaleString()}</span>
+            </Space>
+          );
+        } catch (error) {
+          return <span>Date Error</span>;
+        }
+      },
+    },
+    {
+      title: 'Assigned To',
+      dataIndex: 'assignedTo',
+      key: 'assignedTo',
+      render: (assignedTo: string) => (
+        <span style={{ color: assignedTo ? '#1890ff' : '#8c8c8c' }}>
+          {assignedTo || <Tag color="default">UNASSIGNED</Tag>}
+        </span>
       ),
+    },
+    {
+      title: 'Acknowledged',
+      dataIndex: 'acknowledgedAt',
+      key: 'acknowledgedAt',
+      render: (acknowledgedAt: string, record: Alert) => {
+        if (record.status === 'acknowledged' && acknowledgedAt) {
+          return (
+            <Space>
+              <CheckCircleOutlined style={{ color: '#52c41a' }} />
+              <span>{new Date(acknowledgedAt).toLocaleString()}</span>
+            </Space>
+          );
+        }
+        return <Tag color="orange">PENDING</Tag>;
+      },
     },
     {
       title: 'Actions',
@@ -340,17 +660,69 @@ export default function AlertsPage() {
       render: (record: Alert) => (
         <Space>
           <Button size="small" icon={<EyeOutlined />} onClick={() => handleViewDetails(record)}>
-            View
+            View Details
           </Button>
-          {record.status === 'active' && (
-            <Button 
-              size="small" 
-              type="primary" 
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleAcknowledge(record.id)}
-            >
-              Acknowledge
-            </Button>
+          {record.status === 'resolved' ? (
+            // Show different actions for resolved alerts
+            <Space>
+              <Button 
+                size="small" 
+                type="default"
+                icon={<CheckCircleOutlined />}
+                style={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f', color: '#52c41a' }}
+              >
+                View Resolution
+              </Button>
+              <Button 
+                size="small" 
+                type="default"
+                icon={<InfoCircleOutlined />}
+                onClick={() => showResolutionDetails(record)}
+              >
+                Details
+              </Button>
+              <Button 
+                size="small" 
+                type="default"
+                icon={<CloseCircleOutlined />}
+                onClick={() => handleUnresolve(record.id)}
+                style={{ backgroundColor: '#fff1f0', borderColor: '#ffccc7', color: '#ff4d4f' }}
+              >
+                Unresolve
+              </Button>
+            </Space>
+          ) : (
+            // Show normal actions for active/acknowledged alerts
+            <>
+              {record.status === 'active' && (
+                <Button 
+                  size="small" 
+                  type="primary" 
+                  icon={<CheckCircleOutlined />}
+                  onClick={() => handleAcknowledge(record.id)}
+                >
+                  Acknowledge
+                </Button>
+              )}
+              <Button 
+                size="small" 
+                type="default"
+                icon={<UserOutlined />}
+                onClick={() => handleAssign(record.id)}
+              >
+                Assign
+              </Button>
+              {(record.status === 'active' || record.status === 'acknowledged') && (
+                <Button 
+                  size="small" 
+                  type="default"
+                  icon={<CheckCircleOutlined />}
+                  onClick={() => handleResolve(record.id)}
+                >
+                  Resolve
+                </Button>
+              )}
+            </>
           )}
         </Space>
       ),
@@ -538,7 +910,7 @@ export default function AlertsPage() {
                   cancelText: 'Cancel',
                   onOk: () => {
                     // In a real implementation, you'd show an input field for notes
-                    selectedAlert && handleResolve(selectedAlert.id, 'Resolved by analyst');
+                    selectedAlert && handleResolve(selectedAlert.id);
                   }
                 });
               }}
@@ -550,100 +922,112 @@ export default function AlertsPage() {
         width={800}
       >
         {selectedAlert && (
-          <Tabs defaultActiveKey="details">
-            <TabPane tab="Alert Details" key="details">
-              <Descriptions bordered column={2}>
-                <Descriptions.Item label="Severity">
-                  <Tag color={getSeverityColor(selectedAlert.severity)}>
-                    {selectedAlert.severity?.toUpperCase() || 'UNKNOWN'}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Status">
-                  <Tag color={getStatusColor(selectedAlert.status)}>
-                    {selectedAlert.status?.toUpperCase() || 'UNKNOWN'}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Priority">
-                  <Tag color={getPriorityColor(selectedAlert.priority)}>
-                    {selectedAlert.priority?.toUpperCase() || 'UNKNOWN'}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Category">
-                  {selectedAlert.category}
-                </Descriptions.Item>
-                <Descriptions.Item label="Location" span={2}>
-                  <Space>
-                    <EnvironmentOutlined />
-                    {selectedAlert.location.address}
-                  </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="Confidence">
-                  <Progress
-                    percent={Math.round(selectedAlert.confidence * 100)}
-                    size="small"
-                    strokeColor={selectedAlert.confidence > 0.8 ? '#52c41a' : '#fa8c16'}
-                  />
-                </Descriptions.Item>
-                <Descriptions.Item label="Threat Level">
-                  {selectedAlert.threatLevel}
-                </Descriptions.Item>
-                <Descriptions.Item label="Timestamp" span={2}>
-                  <Space>
-                    <ClockCircleOutlined />
-                    {new Date(selectedAlert.timestamp).toLocaleString()}
-                  </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="Assigned To">
-                  {selectedAlert.assignedTo || <span style={{ color: '#999' }}>Unassigned</span>}
-                </Descriptions.Item>
-                <Descriptions.Item label="Acknowledged At">
-                  {selectedAlert.acknowledgedAt ? 
-                    new Date(selectedAlert.acknowledgedAt).toLocaleString() : 
-                    <span style={{ color: '#999' }}>Not acknowledged</span>
-                  }
-                </Descriptions.Item>
-                <Descriptions.Item label="Description" span={2}>
-                  {selectedAlert.description}
-                </Descriptions.Item>
-                {selectedAlert.resolutionNotes && (
-                  <Descriptions.Item label="Resolution Notes" span={2}>
-                    {selectedAlert.resolutionNotes}
-                  </Descriptions.Item>
-                )}
-              </Descriptions>
-            </TabPane>
+          <div>
+            <Descriptions column={2} bordered>
+              <Descriptions.Item label="Severity">
+                <Tag color={getSeverityColor(selectedAlert.severity)}>
+                  {selectedAlert.severity?.toUpperCase()}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Status">
+                <Tag color={getStatusColor(selectedAlert.status)}>
+                  {selectedAlert.status?.toUpperCase()}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Priority">
+                <Tag color={getPriorityColor(selectedAlert.priority)}>
+                  {selectedAlert.priority?.toUpperCase()}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Threat Level">
+                <Tag color={(() => {
+                  const threatColors: Record<string, string> = {
+                    'critical': 'red',
+                    'high': 'orange', 
+                    'medium': 'gold',
+                    'low': 'green',
+                    'unknown': 'default'
+                  };
+                  return threatColors[selectedAlert.threatLevel?.toLowerCase()] || 'default';
+                })()}>
+                  {selectedAlert.threatLevel?.toUpperCase() || 'UNKNOWN'}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Category">
+                {selectedAlert.category}
+              </Descriptions.Item>
+              <Descriptions.Item label="Confidence">
+                <Progress 
+                  percent={Math.round((selectedAlert.confidence || 0) * 100)} 
+                  size="small" 
+                  strokeColor={selectedAlert.confidence > 0.8 ? '#52c41a' : selectedAlert.confidence > 0.6 ? '#fa8c16' : '#ff4d4f'}
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="Location">
+                <Space>
+                  <EnvironmentOutlined />
+                  <span>{selectedAlert.location?.address}</span>
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="Created">
+                {new Date(selectedAlert.createdAt).toLocaleString()}
+              </Descriptions.Item>
+              <Descriptions.Item label="Assigned To" span={2}>
+                {selectedAlert.assignedTo || <Tag color="default">UNASSIGNED</Tag>}
+              </Descriptions.Item>
+              <Descriptions.Item label="Description" span={2}>
+                {selectedAlert.description}
+              </Descriptions.Item>
+            </Descriptions>
             
             {selectedAlert.aiAnalysis && (
-              <TabPane tab="Analysis" key="ai">
+              <div style={{ marginTop: '16px' }}>
+                <h4>AI Analysis</h4>
                 <Alert
-                  message="Threat Analysis"
-                  description={selectedAlert.aiAnalysis.explanation}
+                  message="AI Analysis Results"
                   type="info"
-                  showIcon
-                  style={{ marginBottom: '16px' }}
+                  description={
+                    <div>
+                      <p><strong>Confidence:</strong> {Math.round((selectedAlert.aiAnalysis?.confidence || 0) * 100)}%</p>
+                      <p><strong>Explanation:</strong> {selectedAlert.aiAnalysis?.explanation || 'No analysis available'}</p>
+                      <p><strong>Recommended Actions:</strong></p>
+                      <ul>
+                        {selectedAlert.aiAnalysis?.recommendedActions?.map((action, index) => (
+                          <li key={index}>{action}</li>
+                        )) || <li>No recommendations available</li>}
+                      </ul>
+                    </div>
+                  }
+                  type="info"
                 />
-                
-                <Card title="Key Risk Factors" size="small" style={{ marginBottom: '16px' }}>
-                  <Space wrap>
-                    {selectedAlert.aiAnalysis.keyFactors.map((factor, index) => (
-                      <Tag key={index} color="blue">{factor}</Tag>
-                    ))}
-                  </Space>
-                </Card>
-                
-                <Card title="Recommended Actions" size="small">
-                  <Timeline>
-                    {selectedAlert.aiAnalysis.recommendedActions.map((action, index) => (
-                      <Timeline.Item key={index} color="blue">
-                        {action}
-                      </Timeline.Item>
-                    ))}
-                  </Timeline>
-                </Card>
-              </TabPane>
+              </div>
             )}
-          </Tabs>
+          </div>
         )}
+      </Modal>
+
+      {/* Assign Modal */}
+      <Modal
+        title="Assign Alert"
+        open={assignModalVisible}
+        onOk={handleAssignSubmit}
+        onCancel={() => {
+          setAssignModalVisible(false);
+          setAssignTo('');
+        }}
+        okText="Assign"
+        cancelText="Cancel"
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <p><strong>Alert:</strong> {selectedAlert?.title}</p>
+          <p><strong>Current Assignee:</strong> {selectedAlert?.assignedTo || 'Unassigned'}</p>
+        </div>
+        <Input
+          placeholder="Enter assignee name or email"
+          value={assignTo}
+          onChange={(e) => setAssignTo(e.target.value)}
+          prefix={<UserOutlined />}
+        />
       </Modal>
     </div>
   );

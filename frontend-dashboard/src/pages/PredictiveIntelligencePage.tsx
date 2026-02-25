@@ -104,7 +104,7 @@ export default function PredictiveIntelligencePage() {
         apiClient.get('/api/predictions/forecasts'),
         apiClient.get('/api/predictions/location-risk'),
         apiClient.get(`/api/predictions/risk-trends?hours=${selectedTimeRange.replace('h', '')}`),
-        apiClient.get(API_ENDPOINTS.PREDICTIONS.DASHBOARD),
+        apiClient.get('/api/intelligence/predictions'),
         aiEngineClient.post(API_ENDPOINTS.AI_ENGINE.PREDICT, {
           lookback_days: 30,
           forecast_hours: parseInt(selectedTimeRange.replace('h', '')),

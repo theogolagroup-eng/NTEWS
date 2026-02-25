@@ -1,0 +1,233 @@
+// API Service Configuration for NTEWS Frontend
+// All API calls should go through the API Gateway at localhost:8080
+
+const API_BASE_URL = 'http://localhost:8080';
+
+// API Endpoints
+export const API_ENDPOINTS = {
+  // Auth Service
+  AUTH: {
+    LOGIN: `${API_BASE_URL}/api/auth/login`,
+    LOGOUT: `${API_BASE_URL}/api/auth/logout`,
+    VALIDATE: `${API_BASE_URL}/api/auth/validate`,
+    STATUS: `${API_BASE_URL}/api/auth/status`,
+  },
+  
+  // Intelligence Service
+  INTELLIGENCE: {
+    DASHBOARD: `${API_BASE_URL}/api/intelligence/dashboard/summary`,
+    REPORTS: `${API_BASE_URL}/api/intelligence/reports`,
+    REPORT: (id: string) => `${API_BASE_URL}/api/intelligence/reports/${id}`,
+    CREATE: `${API_BASE_URL}/api/intelligence/reports`,
+    UPDATE: (id: string) => `${API_BASE_URL}/api/intelligence/reports/${id}`,
+    VERIFY: (id: string) => `${API_BASE_URL}/api/intelligence/reports/${id}/verify`,
+    THREAT_TRENDS: `${API_BASE_URL}/api/intelligence/threat-trends`,
+    THREAT_MAP: `${API_BASE_URL}/api/intelligence/threat-map`,
+  },
+  
+  // Alert Service (port 8081)
+  ALERTS: {
+    DASHBOARD: `http://localhost:8081/api/alerts/dashboard/summary`,
+    ALL: `http://localhost:8081/api/alerts`,
+    ALERT: (id: string) => `http://localhost:8081/api/alerts/${id}`,
+    CREATE: `http://localhost:8081/api/alerts`,
+    UPDATE: (id: string) => `http://localhost:8081/api/alerts/${id}`,
+    ACKNOWLEDGE: (id: string) => `http://localhost:8081/api/alerts/${id}/acknowledge`,
+    RESOLVE: (id: string) => `http://localhost:8081/api/alerts/${id}/resolve`,
+    ASSIGN: (id: string) => `http://localhost:8081/api/alerts/${id}/assign`,
+    ACTIVE: `http://localhost:8081/api/alerts/active`,
+    UNACKNOWLEDGED: `http://localhost:8081/api/alerts/unacknowledged`,
+    STATISTICS: `http://localhost:8081/api/alerts/statistics`,
+    // NLP Analysis
+    NLP_ANALYZE_TEXT: `http://localhost:8081/api/alerts/nlp/analyze-text`,
+    NLP_BATCH_ANALYZE: `http://localhost:8081/api/alerts/nlp/batch-analyze`,
+    NLP_CAPABILITIES: `http://localhost:8081/api/alerts/nlp/capabilities`,
+    NLP_ANALYZE_ALERT: (id: string) => `http://localhost:8081/api/alerts/${id}/nlp-analyze`,
+  },
+  
+  // Action Points Service (integrated with Alert Service - port 8081)
+  ACTION_POINTS: {
+    ALL: `http://localhost:8081/api/action-points`,
+    ACTION_POINT: (id: string) => `http://localhost:8081/api/action-points/${id}`,
+    CREATE: `http://localhost:8081/api/action-points`,
+    UPDATE: (id: string) => `http://localhost:8081/api/action-points/${id}`,
+    DELETE: (id: string) => `http://localhost:8081/api/action-points/${id}`,
+    ASSIGN: (id: string) => `http://localhost:8081/api/action-points/${id}/assign`,
+    COMPLETE: (id: string) => `http://localhost:8081/api/action-points/${id}/complete`,
+    APPROVE: (id: string) => `http://localhost:8081/api/action-points/${id}/approve`,
+    REJECT: (id: string) => `http://localhost:8081/api/action-points/${id}/reject`,
+    BY_STATUS: (status: string) => `http://localhost:8081/api/action-points/status/${status}`,
+    BY_ASSIGNEE: (assignee: string) => `http://localhost:8081/api/action-points/assigned/${assignee}`,
+    BY_PRIORITY: (priority: string) => `http://localhost:8081/api/action-points/priority/${priority}`,
+    SEARCH: `http://localhost:8081/api/action-points/search`,
+    FOR_ALERT: (alertId: string) => `http://localhost:8081/api/action-points/alert/${alertId}`,
+    TRIGGER_FOR_ALERT: (alertId: string) => `http://localhost:8081/api/action-points/alert/${alertId}/trigger`,
+    DASHBOARD_SUMMARY: `http://localhost:8081/api/action-points/dashboard/summary`,
+    RECENT: `http://localhost:8081/api/action-points/recent`,
+    AI_RECOMMENDATION: (id: string) => `http://localhost:8081/api/action-points/${id}/ai-recommendation`,
+    APPLY_AI_RECOMMENDATION: (id: string) => `http://localhost:8081/api/action-points/${id}/apply-ai-recommendation`,
+  },
+  
+  // Prediction Service
+  PREDICTIONS: {
+    DASHBOARD: `${API_BASE_URL}/api/predictions/dashboard/summary`,
+    FORECASTS: `${API_BASE_URL}/api/predictions/forecasts`,
+    FORECAST: (id: string) => `${API_BASE_URL}/api/predictions/forecasts/${id}`,
+    CURRENT_FORECAST: `${API_BASE_URL}/api/predictions/forecasts/current`,
+    HOTSPOTS: `${API_BASE_URL}/api/predictions/hotspots`,
+    HOTSPOT: (id: string) => `${API_BASE_URL}/api/predictions/hotspots/${id}`,
+    RISK_TRENDS: `${API_BASE_URL}/api/predictions/risk-trends`,
+    LOCATION_RISK: `${API_BASE_URL}/api/predictions/location-risk`,
+    GENERATE_FORECAST: `${API_BASE_URL}/api/predictions/generate-forecast`,
+    // AI Engine Integration
+    AI_ENGINE_HEALTH: `${API_BASE_URL}/api/ai-engine/health`,
+    AI_ENGINE_MODELS: `${API_BASE_URL}/api/ai-engine/models`,
+    AI_ENGINE_STATS: `${API_BASE_URL}/api/ai-engine/stats`,
+    AI_ENGINE_CAPABILITIES: `${API_BASE_URL}/api/ai-engine/capabilities`,
+    AI_ENGINE_PREDICTION_ANALYSIS: `${API_BASE_URL}/api/ai-engine/prediction-analysis`,
+  },
+  
+  // Ingestion Service
+  INGESTION: {
+    STATUS: `${API_BASE_URL}/api/ingestion/status`,
+    SOCIAL_MEDIA: `${API_BASE_URL}/api/ingestion/social-media`,
+    CCTV: `${API_BASE_URL}/api/ingestion/cctv`,
+    CYBER_FEED: `${API_BASE_URL}/api/ingestion/cyber-feed`,
+    START_BATCH: `${API_BASE_URL}/api/ingestion/start-batch`,
+  },
+  
+  // AI Engine (Direct access through Gateway)
+  AI_ENGINE: {
+    HEALTH: `${API_BASE_URL}/health`,
+    ROOT: `${API_BASE_URL}/root`,
+    ANALYZE: `${API_BASE_URL}/analyze`,
+    PREDICT: `${API_BASE_URL}/predict`,
+    PREDICT_HOTSPOTS: `${API_BASE_URL}/predict/hotspots`,
+    PREDICTION_ANALYSIS: `${API_BASE_URL}/prediction-analysis`,
+    STATS: `${API_BASE_URL}/stats`,
+    MODELS: `${API_BASE_URL}/models`,
+    CAPABILITIES: `${API_BASE_URL}/capabilities`,
+    // NLP Endpoints
+    NLP_ANALYZE_TEXT: `${API_BASE_URL}/nlp/analyze-text`,
+    NLP_ANALYZE_ALERT: `${API_BASE_URL}/nlp/analyze-alert`,
+    NLP_BATCH_ANALYZE: `${API_BASE_URL}/nlp/batch-analyze`,
+    NLP_CAPABILITIES: `${API_BASE_URL}/nlp/capabilities`,
+  }
+};
+
+// API Client with error handling and authentication
+export class ApiClient {
+  private baseUrl: string;
+  private authToken: string | null = null;
+  
+  constructor(baseUrl: string = API_BASE_URL) {
+    this.baseUrl = baseUrl;
+  }
+  
+  // Authentication methods
+  setAuthToken(token: string) {
+    this.authToken = token;
+  }
+  
+  clearAuthToken() {
+    this.authToken = null;
+  }
+  
+  getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+    
+    return headers;
+  }
+  
+  async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+    try {
+      const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          ...this.getAuthHeaders(),
+          ...options.headers,
+        },
+        ...options,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('API Request failed:', error);
+      throw error;
+    }
+  }
+  
+  async get(endpoint: string): Promise<any> {
+    return this.request(endpoint, { method: 'GET' });
+  }
+  
+  async post(endpoint: string, data?: any): Promise<any> {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+  
+  async put(endpoint: string, data?: any): Promise<any> {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+  
+  async delete(endpoint: string): Promise<any> {
+    return this.request(endpoint, { method: 'DELETE' });
+  }
+  
+  // Authentication specific methods
+  async login(credentials: { username: string; password: string }): Promise<any> {
+    try {
+      const response = await this.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+      if (response.token) {
+        this.setAuthToken(response.token);
+      }
+      return response;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  }
+  
+  async logout(): Promise<any> {
+    try {
+      const response = await this.post(API_ENDPOINTS.AUTH.LOGOUT);
+      this.clearAuthToken();
+      return response;
+    } catch (error) {
+      console.error('Logout failed:', error);
+      this.clearAuthToken(); // Clear token even if request fails
+      throw error;
+    }
+  }
+  
+  async validateToken(): Promise<any> {
+    if (!this.authToken) {
+      throw new Error('No authentication token available');
+    }
+    return this.get(API_ENDPOINTS.AUTH.VALIDATE);
+  }
+}
+
+// Create API client instances
+export const apiClient = new ApiClient();
+export const aiEngineClient = new ApiClient('http://localhost:8000');
+
+// Export default API client
+export default apiClient;

@@ -2,6 +2,7 @@ package com.ntews.intel.service;
 
 import com.ntews.intel.controller.IntelligenceController.*;
 import com.ntews.intel.model.IntelligenceReport;
+import com.ntews.intel.model.Prediction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -27,6 +28,8 @@ public interface IntelligenceService {
     List<ThreatTrend> getThreatTrends(int days);
     
     List<ThreatLocation> getThreatLocations(LocalDateTime since);
+    
+    List<Prediction> getPredictions(String type, LocalDateTime since, int hours);
     
     void deleteIntelligenceReport(String id);
     

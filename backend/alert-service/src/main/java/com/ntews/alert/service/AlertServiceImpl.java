@@ -65,6 +65,11 @@ public class AlertServiceImpl implements AlertService {
         alert.setCreatedAt(LocalDateTime.now());
         alert.setUpdatedAt(LocalDateTime.now());
         
+        // Set timestamp if not provided
+        if (alert.getTimestamp() == null) {
+            alert.setTimestamp(LocalDateTime.now());
+        }
+        
         if (alert.getStatus() == null) {
             alert.setStatus(Alert.AlertStatus.ACTIVE);
         }
@@ -160,6 +165,24 @@ public class AlertServiceImpl implements AlertService {
             alert.setResolutionNotes(resolutionNotes);
             alert.setResolved(true);
             alert.setResolvedAt(LocalDateTime.now());
+            alert.setUpdatedAt(LocalDateTime.now());
+            
+            return alertRepository.save(alert);
+        } else {
+            throw new RuntimeException("Alert not found: " + id);
+        }
+    }
+    
+    @Override
+    public Alert unresolveAlert(String id) {
+        Optional<Alert> alertOpt = alertRepository.findById(id);
+        
+        if (alertOpt.isPresent()) {
+            Alert alert = alertOpt.get();
+            alert.setStatus(Alert.AlertStatus.ACTIVE);
+            alert.setResolutionNotes(null);
+            alert.setResolved(false);
+            alert.setResolvedAt(null);
             alert.setUpdatedAt(LocalDateTime.now());
             
             return alertRepository.save(alert);
@@ -632,6 +655,10 @@ public class AlertServiceImpl implements AlertService {
         alert.setAiRiskFactors(String.join(", ", analysis.getRiskFactors()));
         alert.setTimeToEscalate(analysis.getTimeToEscalate());
         
+        // Set threatLevel based on AI analysis
+        String threatLevel = mapRiskLevelToThreatLevel(analysis.getRecommendedPriority());
+        alert.setThreatLevel(threatLevel);
+        
         // Update alert severity based on AI analysis if more severe
         if (shouldUpgradeSeverity(alert.getSeverity(), analysis.getRecommendedPriority())) {
             alert.setSeverity(mapRiskLevelToSeverity(analysis.getRecommendedPriority()));
@@ -804,6 +831,22 @@ public class AlertServiceImpl implements AlertService {
     }
     
     /**
+     * Map risk level to threat level
+     */
+    private String mapRiskLevelToThreatLevel(String riskLevel) {
+        if (riskLevel == null) return "unknown";
+        
+        switch (riskLevel.toLowerCase()) {
+            case "critical": return "critical";
+            case "high": return "high";
+            case "medium": return "medium";
+            case "low": return "low";
+            case "normal": return "low";
+            default: return "unknown";
+        }
+    }
+    
+    /**
      * Map string to Alert.Priority enum
      */
     private Alert.Priority mapStringToPriority(String priorityStr) {
@@ -822,6 +865,53 @@ public class AlertServiceImpl implements AlertService {
     @Override
     public void deleteAllAlerts() {
         alertRepository.deleteAll();
+    }
+    
+    /**
+     * Fix existing alerts with null timestamps
+     */
+    public void fixNullTimestamps() {
+        List<Alert> alerts = alertRepository.findAll();
+        for (Alert alert : alerts) {
+            if (alert.getTimestamp() == null) {
+                alert.setTimestamp(LocalDateTime.now());
+                alert.setUpdatedAt(LocalDateTime.now());
+                alertRepository.save(alert);
+                log.info("Fixed timestamp for alert: {}", alert.getId());
+            }
+        }
+    }
+    
+    /**
+     * Fix existing alerts with null threat levels
+     */
+    public void fixNullThreatLevels() {
+        List<Alert> alerts = alertRepository.findAll();
+        for (Alert alert : alerts) {
+            if (alert.getThreatLevel() == null) {
+                // Set threat level based on severity
+                String threatLevel = mapSeverityToThreatLevel(alert.getSeverity());
+                alert.setThreatLevel(threatLevel);
+                alert.setUpdatedAt(LocalDateTime.now());
+                alertRepository.save(alert);
+                log.info("Fixed threat level for alert: {} - {}", alert.getId(), threatLevel);
+            }
+        }
+    }
+    
+    /**
+     * Map severity to threat level
+     */
+    private String mapSeverityToThreatLevel(Alert.Severity severity) {
+        if (severity == null) return "unknown";
+        
+        switch (severity) {
+            case CRITICAL: return "critical";
+            case HIGH: return "high";
+            case MEDIUM: return "medium";
+            case LOW: return "low";
+            default: return "unknown";
+        }
     }
     
     @Override

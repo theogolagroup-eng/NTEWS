@@ -139,7 +139,7 @@ function CommandDashboard() {
       const [intelData, alertData, predictionData, allAlerts] = await Promise.all([
         Promise.race([apiClient.get(API_ENDPOINTS.INTELLIGENCE.DASHBOARD).catch(() => ({ totalReports: 0, activeThreats: 0, criticalThreats: 0, highThreats: 0, mediumThreats: 0, lowThreats: 0, categoryCounts: [], recentThreats: [] })), timeoutPromise]),
         Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.DASHBOARD).catch(() => ({ totalAlerts: 0, activeAlerts: 0, unacknowledgedAlerts: 0, criticalAlerts: 0, highAlerts: 0, mediumAlerts: 0, lowAlerts: 0, severityCounts: [], recentAlerts: [] })), timeoutPromise]),
-        Promise.race([apiClient.get(API_ENDPOINTS.PREDICTIONS.DASHBOARD).catch(() => ({ activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] })), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.INTELLIGENCE.PREDICTIONS).catch(() => ({ activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] })), timeoutPromise]),
         Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.ALL).catch(() => ({ content: [] })), timeoutPromise])
       ]);
 
