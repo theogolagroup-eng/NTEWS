@@ -205,7 +205,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.get('/api/action-points');
+      const response = await apiClient.get(API_ENDPOINTS.ACTION_POINTS.ALL);
       setActionPoints(response || []);
     } catch (err) {
       console.error('Failed to load action points:', err);
@@ -220,7 +220,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.post('/api/action-points', actionPointData);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.CREATE, actionPointData);
       const newActionPoint = response;
       
       setActionPoints(prev => [...prev, newActionPoint]);
@@ -242,7 +242,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.put(`/api/action-points/${id}`, updates);
+      const response = await apiClient.put(API_ENDPOINTS.ACTION_POINTS.UPDATE(id), updates);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -263,7 +263,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      await apiClient.delete(`/api/action-points/${id}`);
+      await apiClient.delete(API_ENDPOINTS.ACTION_POINTS.DELETE(id));
       setActionPoints(prev => prev.filter(ap => ap.id !== id));
     } catch (err) {
       setError('Failed to delete action point');
@@ -278,7 +278,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.post(`/api/action-points/${id}/assign?assignedTo=${encodeURIComponent(assignedTo)}`, null);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.ASSIGN(id) + `?assignedTo=${encodeURIComponent(assignedTo)}`, null);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -300,7 +300,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = notes ? { notes } : {};
-      const response = await apiClient.post(`/api/action-points/${id}/complete`, requestBody);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.COMPLETE(id), requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -327,7 +327,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       // If the context is an alert, trigger actions for that alert
       if (context.relatedAlertId) {
-        await apiClient.post(`/api/action-points/alert/${context.relatedAlertId}/trigger`);
+        await apiClient.post(API_ENDPOINTS.ACTION_POINTS.TRIGGER_FOR_ALERT(context.relatedAlertId));
         await fetchActionPoints(); // Refresh action points
       }
     } catch (err) {
@@ -357,7 +357,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = notes ? { notes } : {};
-      const response = await apiClient.post(`/api/action-points/${id}/approve`, requestBody);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.APPROVE(id), requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -379,7 +379,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = { reason };
-      const response = await apiClient.post(`/api/action-points/${id}/reject`, requestBody);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.REJECT(id), requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -420,10 +420,10 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       // Generate AI recommendation first
-      await apiClient.post(`/api/action-points/${actionPointId}/ai-recommendation`);
+      await apiClient.post(API_ENDPOINTS.ACTION_POINTS.AI_RECOMMENDATION(actionPointId));
       
       // Then apply it
-      const response = await apiClient.post(`/api/action-points/${actionPointId}/apply-ai-recommendation`);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.APPLY_AI_RECOMMENDATION(actionPointId));
       const updatedActionPoint = response;
       
       setActionPoints(prev => 

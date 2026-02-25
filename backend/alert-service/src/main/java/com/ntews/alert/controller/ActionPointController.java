@@ -462,4 +462,18 @@ public class ActionPointController {
             return ResponseEntity.internalServerError().build();
         }
     }
+    
+    // Dashboard Summary
+    @GetMapping("/dashboard/summary")
+    public ResponseEntity<Map<String, Object>> getDashboardSummary() {
+        try {
+            logger.info("REST request to get action points dashboard summary");
+            
+            Map<String, Object> summary = actionPointService.getDashboardSummary();
+            return ResponseEntity.ok(summary);
+        } catch (Exception e) {
+            logger.error("Error getting dashboard summary: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
