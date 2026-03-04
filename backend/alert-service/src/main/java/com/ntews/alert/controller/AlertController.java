@@ -62,30 +62,24 @@ public class AlertController {
     }
     
     @PostMapping("/{id}/acknowledge")
-    public ResponseEntity<Alert> acknowledgeAlert(@PathVariable String id) {
-        Alert acknowledgedAlert = alertService.acknowledgeAlert(id);
+    public ResponseEntity<Alert> acknowledgeAlert(@PathVariable UUID id) {
+        Alert acknowledgedAlert = alertService.acknowledgeAlert(id.toString());
         return ResponseEntity.ok(acknowledgedAlert);
     }
     
     @PostMapping("/{id}/resolve")
     public ResponseEntity<Alert> resolveAlert(
-            @PathVariable String id, @RequestBody ResolutionRequest request) {
+            @PathVariable UUID id, @RequestBody ResolutionRequest request) {
         
-        Alert resolvedAlert = alertService.resolveAlert(id, request.getResolutionNotes());
+        Alert resolvedAlert = alertService.resolveAlert(id.toString(), request.getResolutionNotes());
         return ResponseEntity.ok(resolvedAlert);
-    }
-    
-    @PostMapping("/{id}/unresolve")
-    public ResponseEntity<Alert> unresolveAlert(@PathVariable String id) {
-        Alert unresolvedAlert = alertService.unresolveAlert(id);
-        return ResponseEntity.ok(unresolvedAlert);
     }
     
     @PostMapping("/{id}/assign")
     public ResponseEntity<Alert> assignAlert(
-            @PathVariable String id, @RequestBody AssignmentRequest request) {
+            @PathVariable UUID id, @RequestBody AssignmentRequest request) {
         
-        Alert assignedAlert = alertService.assignAlert(id, request.getAssignedTo());
+        Alert assignedAlert = alertService.assignAlert(id.toString(), request.getAssignedTo());
         return ResponseEntity.ok(assignedAlert);
     }
     
@@ -366,46 +360,6 @@ public class AlertController {
         
         public String getSeverity() { return severity; }
         public int getCount() { return count; }
-    }
-    
-    /**
-     * Fix existing alerts with null timestamps
-     */
-    @PostMapping("/fix-timestamps")
-    public ResponseEntity<Map<String, Object>> fixTimestamps() {
-        try {
-            log.info("REST request to fix null timestamps");
-            ((com.ntews.alert.service.AlertServiceImpl) alertService).fixNullTimestamps();
-            return ResponseEntity.ok(Map.of(
-                "message", "Timestamps fixed successfully",
-                "timestamp", LocalDateTime.now()
-            ));
-        } catch (Exception e) {
-            log.error("Error fixing timestamps: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                "error", "Failed to fix timestamps: " + e.getMessage()
-            ));
-        }
-    }
-    
-    /**
-     * Fix existing alerts with null threat levels
-     */
-    @PostMapping("/fix-threat-levels")
-    public ResponseEntity<Map<String, Object>> fixThreatLevels() {
-        try {
-            log.info("REST request to fix null threat levels");
-            ((com.ntews.alert.service.AlertServiceImpl) alertService).fixNullThreatLevels();
-            return ResponseEntity.ok(Map.of(
-                "message", "Threat levels fixed successfully",
-                "timestamp", LocalDateTime.now()
-            ));
-        } catch (Exception e) {
-            log.error("Error fixing threat levels: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                "error", "Failed to fix threat levels: " + e.getMessage()
-            ));
-        }
     }
     
     public static class RecentAlert {

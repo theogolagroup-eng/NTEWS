@@ -13,11 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/action-points")
-// Remove @CrossOrigin to avoid conflicts with API Gateway CORS configuration
 public class ActionPointController {
     
     private static final Logger logger = LoggerFactory.getLogger(ActionPointController.class);
@@ -57,13 +55,11 @@ public class ActionPointController {
     public ResponseEntity<ActionPoint> createActionPoint(@RequestBody ActionPoint actionPoint) {
         try {
             logger.info("REST request to create action point: {}", actionPoint.getTitle());
-            logger.debug("ActionPoint data received: {}", actionPoint);
             
             ActionPoint created = actionPointService.createActionPoint(actionPoint);
             return ResponseEntity.ok(created);
         } catch (Exception e) {
             logger.error("Error creating action point: {}", e.getMessage(), e);
-            logger.error("ActionPoint that caused error: {}", actionPoint);
             return ResponseEntity.badRequest().build();
         }
     }
@@ -403,39 +399,12 @@ public class ActionPointController {
             
             // Apply the AI recommendation by setting status to pending for human review
             actionPoint.setStatus(ActionPoint.ActionStatus.PENDING);
-            actionPoint.setUpdatedAt(LocalDateTime.now());
             
             ActionPoint updated = actionPointService.updateActionPoint(id, actionPoint);
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
             logger.error("Error applying AI recommendation for action point {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.status(500).build();
-        }
-    }
-    
-    // Reverse AI Recommendation
-    @PostMapping("/{id}/reverse-ai-recommendation")
-    public ResponseEntity<ActionPoint> reverseAIRecommendation(@PathVariable String id) {
-        try {
-            logger.info("REST request to reverse AI recommendation for action point: {}", id);
-            
-            Optional<ActionPoint> actionPointOpt = actionPointService.getActionPointById(id);
-            if (!actionPointOpt.isPresent()) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            ActionPoint actionPoint = actionPointOpt.get();
-            
-            // Reverse the AI recommendation by clearing it and resetting status
-            actionPoint.setAiRecommendation(null);
-            actionPoint.setStatus(ActionPoint.ActionStatus.PENDING);
-            actionPoint.setUpdatedAt(LocalDateTime.now());
-            
-            ActionPoint updated = actionPointService.updateActionPoint(id, actionPoint);
-            return ResponseEntity.ok(updated);
-        } catch (Exception e) {
-            logger.error("Error reversing AI recommendation for action point {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.status(500).build();
+            return ResponseEntity.internalServerError().build();
         }
     }
     
@@ -489,20 +458,6 @@ public class ActionPointController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             logger.error("Error triggering actions for hotspot {}: {}", hotspotId, e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    // Dashboard Summary
-    @GetMapping("/dashboard/summary")
-    public ResponseEntity<Map<String, Object>> getDashboardSummary() {
-        try {
-            logger.info("REST request to get action points dashboard summary");
-            
-            Map<String, Object> summary = actionPointService.getDashboardSummary();
-            return ResponseEntity.ok(summary);
-        } catch (Exception e) {
-            logger.error("Error getting dashboard summary: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

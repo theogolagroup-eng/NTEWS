@@ -498,48 +498,4 @@ public class ActionPointService {
             return new ArrayList<>();
         }
     }
-    
-    public Map<String, Object> getDashboardSummary() {
-        try {
-            Map<String, Object> summary = new HashMap<>();
-            
-            // Total action points
-            long totalActionPoints = actionPointRepository.count();
-            summary.put("totalActionPoints", totalActionPoints);
-            
-            // Action points by status
-            Map<String, Long> statusCounts = new HashMap<>();
-            statusCounts.put("pending", actionPointRepository.countByStatus(ActionPoint.ActionStatus.PENDING));
-            statusCounts.put("in_progress", actionPointRepository.countByStatus(ActionPoint.ActionStatus.IN_PROGRESS));
-            statusCounts.put("completed", actionPointRepository.countByStatus(ActionPoint.ActionStatus.COMPLETED));
-            statusCounts.put("cancelled", actionPointRepository.countByStatus(ActionPoint.ActionStatus.CANCELLED));
-            summary.put("actionPointsByStatus", statusCounts);
-            
-            // Action points by priority
-            Map<String, Long> priorityCounts = new HashMap<>();
-            priorityCounts.put("critical", actionPointRepository.countByPriority(ActionPoint.Priority.CRITICAL));
-            priorityCounts.put("high", actionPointRepository.countByPriority(ActionPoint.Priority.HIGH));
-            priorityCounts.put("medium", actionPointRepository.countByPriority(ActionPoint.Priority.MEDIUM));
-            priorityCounts.put("low", actionPointRepository.countByPriority(ActionPoint.Priority.LOW));
-            summary.put("actionPointsByPriority", priorityCounts);
-            
-            // Recent action points (last 7 days)
-            List<ActionPoint> recentActionPoints = getRecentActionPoints(10);
-            summary.put("recentActionPoints", recentActionPoints);
-            
-            // Overdue action points
-            long overdueCount = actionPointRepository.findOverdueActions(LocalDateTime.now()).size();
-            summary.put("overdueActionPoints", overdueCount);
-            
-            // Completion rate
-            long completedCount = statusCounts.get("completed");
-            double completionRate = totalActionPoints > 0 ? (double) completedCount / totalActionPoints * 100 : 0;
-            summary.put("completionRate", Math.round(completionRate * 100.0) / 100.0);
-            
-            return summary;
-        } catch (Exception e) {
-            logger.error("Error generating dashboard summary: {}", e.getMessage(), e);
-            return new HashMap<>();
-        }
-    }
 }

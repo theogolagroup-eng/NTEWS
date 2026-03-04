@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiClient } from '@/services/api';
-import { message } from 'antd';
 
 // Action Point Types
 export interface ActionPoint {
@@ -84,16 +83,12 @@ interface ActionPointsContextType {
   // AI Recommendations
   generateAIRecommendation: (context: any) => Promise<string>;
   applyAIRecommendation: (actionPointId: string) => Promise<void>;
-  reverseAIRecommendation: (actionPointId: string) => Promise<void>;
   
   // Filtering and Search
   getActionPointsByStatus: (status: ActionPoint['status']) => ActionPoint[];
   getActionPointsByAssignee: (assignee: string) => ActionPoint[];
   getActionPointsByPriority: (priority: ActionPoint['priority']) => ActionPoint[];
   searchActionPoints: (query: string) => ActionPoint[];
-  
-  // Manual refresh
-  refreshActionPoints: () => Promise<void>;
 }
 
 const ActionPointsContext = createContext<ActionPointsContextType>({
@@ -117,7 +112,6 @@ const ActionPointsContext = createContext<ActionPointsContextType>({
   getActionPointsByAssignee: () => [],
   getActionPointsByPriority: () => [],
   searchActionPoints: () => [],
-  refreshActionPoints: async () => {},
 });
 
 // Mock Data for Development
@@ -201,22 +195,36 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load action points from backend on mount only
+  // Load action points from backend on mount
   useEffect(() => {
     fetchActionPoints();
-  }, []); // Empty dependency array means run only once on mount
+  }, []);
 
   const fetchActionPoints = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.get(API_ENDPOINTS.ACTION_POINTS.ALL);
-      setActionPoints(response || []);
+      const response = await apiClient.get('/api/action-points');
+      console.log('Action points response:', response);
+      
+      // Handle different response structures
+      let actionPointsData = [];
+      if (Array.isArray(response)) {
+        actionPointsData = response;
+      } else if (response && Array.isArray(response.content)) {
+        actionPointsData = response.content;
+      } else if (response && Array.isArray(response.data)) {
+        actionPointsData = response.data;
+      } else if (response) {
+        actionPointsData = [response];
+      }
+      
+      console.log('Processed action points:', actionPointsData);
+      setActionPoints(actionPointsData);
     } catch (err) {
       console.error('Failed to load action points:', err);
       setError('Failed to load action points');
-      // Don't re-throw to prevent continuous re-renders
     } finally {
       setLoading(false);
     }
@@ -227,10 +235,9 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.CREATE, actionPointData);
+      const response = await apiClient.post('/api/action-points', actionPointData);
       const newActionPoint = response;
       
-      // Add to local state immediately without refresh
       setActionPoints(prev => [...prev, newActionPoint]);
       
       // Auto-trigger workflow if applicable
@@ -250,7 +257,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.put(API_ENDPOINTS.ACTION_POINTS.UPDATE(id), updates);
+      const response = await apiClient.put(`/api/action-points/${id}`, updates);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -271,10 +278,8 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      await apiClient.delete(API_ENDPOINTS.ACTION_POINTS.DELETE(id));
+      await apiClient.delete(`/api/action-points/${id}`);
       setActionPoints(prev => prev.filter(ap => ap.id !== id));
-      
-      message.success('Action point deleted successfully');
     } catch (err) {
       setError('Failed to delete action point');
       console.error('Delete action point error:', err);
@@ -288,7 +293,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.ASSIGN(id) + `?assignedTo=${encodeURIComponent(assignedTo)}`, null);
+      const response = await apiClient.post(`/api/action-points/${id}/assign?assignedTo=${encodeURIComponent(assignedTo)}`, null);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -310,7 +315,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = notes ? { notes } : {};
-      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.COMPLETE(id), requestBody);
+      const response = await apiClient.post(`/api/action-points/${id}/complete`, requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -337,7 +342,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       // If the context is an alert, trigger actions for that alert
       if (context.relatedAlertId) {
-        await apiClient.post(API_ENDPOINTS.ACTION_POINTS.TRIGGER_FOR_ALERT(context.relatedAlertId));
+        await apiClient.post(`/api/action-points/alert/${context.relatedAlertId}/trigger`);
         await fetchActionPoints(); // Refresh action points
       }
     } catch (err) {
@@ -367,7 +372,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = notes ? { notes } : {};
-      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.APPROVE(id), requestBody);
+      const response = await apiClient.post(`/api/action-points/${id}/approve`, requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -389,7 +394,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = { reason };
-      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.REJECT(id), requestBody);
+      const response = await apiClient.post(`/api/action-points/${id}/reject`, requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -430,10 +435,10 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       // Generate AI recommendation first
-      await apiClient.post(API_ENDPOINTS.ACTION_POINTS.AI_RECOMMENDATION(actionPointId));
+      await apiClient.post(`/api/action-points/${actionPointId}/ai-recommendation`);
       
       // Then apply it
-      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.APPLY_AI_RECOMMENDATION(actionPointId));
+      const response = await apiClient.post(`/api/action-points/${actionPointId}/apply-ai-recommendation`);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -441,34 +446,9 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
           ap.id === actionPointId ? updatedActionPoint : ap
         )
       );
-      
-      message.success('AI recommendation applied successfully');
     } catch (err) {
       setError('Failed to apply AI recommendation');
       console.error('Apply AI recommendation error:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const reverseAIRecommendation = async (actionPointId: string) => {
-    try {
-      setLoading(true);
-      
-      const response = await apiClient.post(`${API_ENDPOINTS.ACTION_POINTS.ACTION_POINT(actionPointId)}/reverse-ai-recommendation`);
-      const updatedActionPoint = response;
-      
-      setActionPoints(prev => 
-        prev.map(ap => 
-          ap.id === actionPointId ? updatedActionPoint : ap
-        )
-      );
-      
-      message.success('AI recommendation reversed successfully');
-    } catch (err) {
-      setError('Failed to reverse AI recommendation');
-      console.error('Reverse AI recommendation error:', err);
       throw err;
     } finally {
       setLoading(false);
@@ -512,12 +492,10 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     rejectActionPoint,
     generateAIRecommendation,
     applyAIRecommendation,
-    reverseAIRecommendation,
     getActionPointsByStatus,
     getActionPointsByAssignee,
     getActionPointsByPriority,
     searchActionPoints,
-    refreshActionPoints: fetchActionPoints, // Add manual refresh function
   };
 
   return (

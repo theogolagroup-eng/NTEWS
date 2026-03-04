@@ -1,0 +1,338 @@
+package com.ntews.intel.service;
+
+import com.ntews.intel.model.ThreatData;
+import com.ntews.intel.model.SocialMediaData;
+import com.ntews.intel.model.CCTVData;
+import com.ntews.intel.model.IntelligenceReport;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+
+@Service
+@Slf4j
+public class IntelligenceProcessingService {
+    
+    @Autowired
+    private WebClient.Builder webClientBuilder;
+    
+    @Autowired
+    private KafkaTemplate<String, Object> kafkaTemplate;
+    
+    @Autowired
+    private ThreatFusionService fusionService;
+    
+    @Autowired
+    private ThreatScoringService scoringService;
+    
+    @Value("${ai-engine.base-url:http://localhost:8000}")
+    private String aiEngineUrl;
+    
+    @Value("${intelligence.processing.batch-size:50}")
+    private Integer batchSize;
+    
+    @Value("${intelligence.processing.timeout-seconds:60}")
+    private Integer timeoutSeconds;
+    
+    @KafkaListener(topics = "social-media-data", groupId = "intelligence-service")
+    public void processSocialMediaData(SocialMediaData data) {
+        try {
+            log.debug("Processing social media data: {}", data.getId());
+            
+            // Convert to ThreatData
+            ThreatData threatData = convertToThreatData(data);
+            
+            // Process through AI engine
+            CompletableFuture<IntelligenceReport> future = processThreatData(threatData);
+            
+            future.thenAccept(report -> {
+                if (report.getThreatScore() > 0.5) {  // Only send reports with significant threat scores
+                    kafkaTemplate.send("intelligence-reports", report.getId(), report);
+                    log.info("Generated intelligence report: {}", report.getId());
+                }
+            }).exceptionally(ex -> {
+                log.error("Error processing social media data: {}", ex.getMessage());
+                return null;
+            });
+            
+        } catch (Exception e) {
+            log.error("Error processing social media data: {}", e.getMessage(), e);
+        }
+    }
+    
+    @KafkaListener(topics = "cctv-data", groupId = "intelligence-service")
+    public void processCCTVData(CCTVData data) {
+        try {
+            log.debug("Processing CCTV data: {}", data.getId());
+            
+            // Convert to ThreatData
+            ThreatData threatData = convertToThreatData(data);
+            
+            // Process through AI engine
+            CompletableFuture<IntelligenceReport> future = processThreatData(threatData);
+            
+            future.thenAccept(report -> {
+                if (report.getThreatScore() > 0.5) {  // Only send reports with significant threat scores
+                    kafkaTemplate.send("intelligence-reports", report.getId(), report);
+                    log.info("Generated intelligence report: {}", report.getId());
+                }
+            }).exceptionally(ex -> {
+                log.error("Error processing CCTV data: {}", ex.getMessage());
+                return null;
+            });
+            
+        } catch (Exception e) {
+            log.error("Error processing CCTV data: {}", e.getMessage(), e);
+        }
+    }
+    
+    @KafkaListener(topics = "cyber-data", groupId = "intelligence-service")
+    public void processCyberData(ThreatData data) {
+        try {
+            log.debug("Processing cyber data: {}", data.getId());
+            
+            // Process through AI engine
+            CompletableFuture<IntelligenceReport> future = processThreatData(data);
+            
+            future.thenAccept(report -> {
+                if (report.getThreatScore() > 0.5) {  // Only send reports with significant threat scores
+                    kafkaTemplate.send("intelligence-reports", report.getId(), report);
+                    log.info("Generated intelligence report: {}", report.getId());
+                }
+            }).exceptionally(ex -> {
+                log.error("Error processing cyber data: {}", ex.getMessage());
+                return null;
+            });
+            
+        } catch (Exception e) {
+            log.error("Error processing cyber data: {}", e.getMessage(), e);
+        }
+    }
+    
+    private CompletableFuture<IntelligenceReport> processThreatData(ThreatData threatData) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                // Call AI engine for analysis
+                WebClient webClient = webClientBuilder.baseUrl(aiEngineUrl).build();
+                
+                // NLP Analysis for text content - calls /predict/text endpoint
+                Map<String, Object> nlpResult = webClient.post()
+                    .uri("/predict/text")
+                    .bodyValue(Map.of(
+                        "text", threatData.getRawContent() != null ? threatData.getRawContent() : "",
+                        "model", "random_forest"
+                    ))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+                
+                // Vision/Geospatial Analysis for image/video content with location
+                Map<String, Object> visionResult = null;
+                if (threatData.getLocation() != null && 
+                    threatData.getLocation().getLatitude() != null && 
+                    threatData.getLocation().getLongitude() != null) {
+                    visionResult = webClient.post()
+                        .uri("/predict/geospatial")
+                        .bodyValue(Map.of(
+                            "latitude", threatData.getLocation().getLatitude(),
+                            "longitude", threatData.getLocation().getLongitude(),
+                            "model", "random_forest_geo"
+                        ))
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .block();
+                }
+                
+                // Create intelligence report
+                IntelligenceReport report = IntelligenceReport.builder()
+                    .id(UUID.randomUUID().toString())
+                    .title("Threat Intelligence Report")
+                    .summary(generateSummary(threatData, nlpResult, visionResult))
+                    .threatScore(calculateThreatScore(threatData, nlpResult, visionResult))
+                    .confidence(calculateConfidence(nlpResult, visionResult))
+                    .startTime(threatData.getTimestamp())
+                    .location(threatData.getLocation())
+                    .sources(Arrays.asList(IntelligenceReport.ThreatIntelligence.builder()
+                        .id(threatData.getId())
+                        .source(threatData.getSource())
+                        .sourceType(threatData.getSourceType())
+                        .content(threatData.getRawContent())
+                        .timestamp(threatData.getTimestamp())
+                        .relevanceScore(1.0)
+                        .build()))
+                    .aiAnalysis(buildAIAnalysis(nlpResult, visionResult))
+                    .status(IntelligenceReport.ReportStatus.DRAFT)
+                    .createdAt(LocalDateTime.now())
+                    .verified(false)
+                    .build();
+                
+                // Determine threat level
+                report.setThreatLevel(determineThreatLevel(report.getThreatScore()));
+                
+                // Generate recommendations
+                report.setRecommendations(generateRecommendations(report));
+                
+                return report;
+                
+            } catch (Exception e) {
+                log.error("Error processing threat data: {}", e.getMessage(), e);
+                throw new RuntimeException("Failed to process threat data", e);
+            }
+        });
+    }
+    
+    private ThreatData convertToThreatData(SocialMediaData socialMediaData) {
+        return ThreatData.builder()
+            .id(socialMediaData.getId())
+            .source(socialMediaData.getPlatform())
+            .sourceType("social_media")
+            .contentType("text")
+            .rawContent(socialMediaData.getContent())
+            .processedContent(socialMediaData.getContent())
+            .location(ThreatData.LocationInfo.builder()
+                .latitude(socialMediaData.getGeoTagLatitude())
+                .longitude(socialMediaData.getGeoTagLongitude())
+                .address(socialMediaData.getLocation())
+                .confidence(0.8)
+                .build())
+            .timestamp(socialMediaData.getPostedAt())
+            .ingestedAt(LocalDateTime.now())
+            .build();
+    }
+    
+    private ThreatData convertToThreatData(CCTVData cctvData) {
+        return ThreatData.builder()
+            .id(cctvData.getId())
+            .source(cctvData.getCameraId())
+            .sourceType("cctv")
+            .contentType("video")
+            .rawContent(cctvData.getStreamUrl())
+            .processedContent(cctvData.getStreamUrl())
+            .location(ThreatData.LocationInfo.builder()
+                .latitude(cctvData.getLatitude())
+                .longitude(cctvData.getLongitude())
+                .address(cctvData.getLocation())
+                .confidence(0.9)
+                .build())
+            .timestamp(cctvData.getRecordedAt())
+            .ingestedAt(LocalDateTime.now())
+            .build();
+    }
+    
+    private String generateSummary(ThreatData threatData, Map<String, Object> nlpResult, Map<String, Object> visionResult) {
+        StringBuilder summary = new StringBuilder();
+        summary.append("Threat detected from ").append(threatData.getSourceType())
+               .append(" source: ").append(threatData.getSource());
+        
+        if (nlpResult != null && nlpResult.containsKey("classification")) {
+            summary.append(". NLP analysis indicates: ").append(nlpResult.get("classification"));
+        }
+        
+        if (visionResult != null && visionResult.containsKey("detections")) {
+            summary.append(". Vision analysis detected: ").append(visionResult.get("detections"));
+        }
+        
+        return summary.toString();
+    }
+    
+    private Double calculateThreatScore(ThreatData threatData, Map<String, Object> nlpResult, Map<String, Object> visionResult) {
+        double score = 0.0;
+        
+        // Base score from source type
+        switch (threatData.getSourceType()) {
+            case "social_media":
+                score += 0.3;
+                break;
+            case "cctv":
+                score += 0.4;
+                break;
+            case "cyber":
+                score += 0.3;
+                break;
+        }
+        
+        // NLP contribution - use confidence from /predict/text response
+        if (nlpResult != null && nlpResult.containsKey("confidence")) {
+            score += (Double) nlpResult.get("confidence") * 0.4;
+        }
+        
+        // Geospatial contribution - use confidence from /predict/geospatial response
+        if (visionResult != null && visionResult.containsKey("confidence")) {
+            score += (Double) visionResult.get("confidence") * 0.2;
+        }
+        
+        return Math.min(1.0, score);
+    }
+    
+    private Double calculateConfidence(Map<String, Object> nlpResult, Map<String, Object> visionResult) {
+        double confidence = 0.7;  // Base confidence
+        
+        if (nlpResult != null && nlpResult.containsKey("confidence")) {
+            confidence = (confidence + (Double) nlpResult.get("confidence")) / 2;
+        }
+        
+        if (visionResult != null && visionResult.containsKey("confidence")) {
+            confidence = (confidence + (Double) visionResult.get("confidence")) / 2;
+        }
+        
+        return confidence;
+    }
+    
+    private IntelligenceReport.ThreatLevel determineThreatLevel(Double threatScore) {
+        if (threatScore >= 0.8) return IntelligenceReport.ThreatLevel.CRITICAL;
+        if (threatScore >= 0.6) return IntelligenceReport.ThreatLevel.HIGH;
+        if (threatScore >= 0.3) return IntelligenceReport.ThreatLevel.MEDIUM;
+        return IntelligenceReport.ThreatLevel.LOW;
+    }
+    
+    private IntelligenceReport.AIAnalysis buildAIAnalysis(Map<String, Object> nlpResult, Map<String, Object> visionResult) {
+        return IntelligenceReport.AIAnalysis.builder()
+            .nlpAnalysis(nlpResult != null ? nlpResult.toString() : "No NLP analysis available")
+            .visionAnalysis(visionResult != null ? visionResult.toString() : "No vision analysis available")
+            .keyEntities(nlpResult != null && nlpResult.containsKey("entities") ? 
+                        (List<String>) nlpResult.get("entities") : Arrays.asList())
+            .threatKeywords(nlpResult != null && nlpResult.containsKey("threat_keywords") ? 
+                           (List<String>) nlpResult.get("threat_keywords") : Arrays.asList())
+            .sentimentScore(nlpResult != null && nlpResult.containsKey("sentiment_score") ? 
+                          (Double) nlpResult.get("sentiment_score") : 0.0)
+            .sentimentLabel(nlpResult != null && nlpResult.containsKey("sentiment_label") ? 
+                           (String) nlpResult.get("sentiment_label") : "neutral")
+            .explanation("AI-generated threat analysis based on NLP and computer vision models")
+            .build();
+    }
+    
+    private List<String> generateRecommendations(IntelligenceReport report) {
+        List<String> recommendations = new ArrayList<>();
+        
+        switch (report.getThreatLevel()) {
+            case CRITICAL:
+                recommendations.add("Immediate evacuation recommended");
+                recommendations.add("Deploy emergency response teams");
+                recommendations.add("Lockdown affected area");
+                break;
+            case HIGH:
+                recommendations.add("Increase security presence");
+                recommendations.add("Monitor situation closely");
+                recommendations.add("Prepare contingency plans");
+                break;
+            case MEDIUM:
+                recommendations.add("Increase surveillance");
+                recommendations.add("Review security protocols");
+                recommendations.add("Alert relevant authorities");
+                break;
+            case LOW:
+                recommendations.add("Continue monitoring");
+                recommendations.add("Log for pattern analysis");
+                break;
+        }
+        
+        return recommendations;
+    }
+}

@@ -3,10 +3,6 @@ package com.ntews.alert.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,15 +35,12 @@ public class ActionPoint {
     private String createdBy;
     
     @Field("created_at")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSS][.SS][.S][XXX][XX][X]", timezone = "UTC")
     private LocalDateTime createdAt;
     
     @Field("updated_at")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSS][.SS][.S][XXX][XX][X]", timezone = "UTC")
     private LocalDateTime updatedAt;
     
     @Field("due_date")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSS][.SS][.S][XXX][XX][X]", timezone = "UTC")
     private LocalDateTime dueDate;
     
     @Field("related_alert_id")
@@ -102,19 +95,13 @@ public class ActionPoint {
             return value;
         }
         
-        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
         public static ActionType fromValue(String value) {
-            if (value == null) return null;
             for (ActionType type : ActionType.values()) {
                 if (type.value.equals(value)) {
                     return type;
                 }
             }
             throw new IllegalArgumentException("Unknown ActionType: " + value);
-        }
-        
-        public String toJson() {
-            return value;
         }
     }
     
@@ -134,20 +121,13 @@ public class ActionPoint {
             return value;
         }
         
-        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
         public static Priority fromValue(String value) {
-            if (value == null) return null;
             for (Priority priority : Priority.values()) {
-                if (priority.value.equalsIgnoreCase(value)) {
+                if (priority.value.equals(value)) {
                     return priority;
                 }
             }
             throw new IllegalArgumentException("Unknown Priority: " + value);
-        }
-        
-        @JsonProperty("priority")
-        public String toJson() {
-            return value;
         }
     }
     
@@ -167,20 +147,13 @@ public class ActionPoint {
             return value;
         }
         
-        @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
         public static ActionStatus fromValue(String value) {
-            if (value == null) return null;
             for (ActionStatus status : ActionStatus.values()) {
-                if (status.value.equalsIgnoreCase(value)) {
+                if (status.value.equals(value)) {
                     return status;
                 }
             }
             throw new IllegalArgumentException("Unknown ActionStatus: " + value);
-        }
-        
-        @JsonProperty("status")
-        public String toJson() {
-            return value;
         }
     }
     

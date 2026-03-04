@@ -69,14 +69,16 @@ const MapBoundsUpdater: React.FC<{
   useEffect(() => {
     if (threats.length === 0 && hotspots.length === 0) return;
 
-    const bounds = new LatLngBounds();
+    const bounds = new LatLngBounds([]);
 
     threats.forEach((threat) => {
-      bounds.extend([threat.latitude, threat.longitude]);
+      const point = [threat.latitude, threat.longitude] as [number, number];
+      bounds.extend(point);
     });
 
     hotspots.forEach((hotspot) => {
-      bounds.extend([hotspot.latitude, hotspot.longitude]);
+      const point = [hotspot.latitude, hotspot.longitude] as [number, number];
+      bounds.extend(point);
     });
 
     if (bounds.isValid()) {
@@ -94,72 +96,14 @@ export default function ThreatMap({
   onHotspotClick,
 }: ThreatMapProps) {
   const [mapCenter, setMapCenter] = useState<[number, number]>([
-    -1.2921, 36.8219,
-  ]); // Nairobi
-  const [mapZoom, setMapZoom] = useState(11);
+    0.0236, 37.9062,
+  ]); // Center of Kenya
+  const [mapZoom, setMapZoom] = useState(6); // Zoom level to show most of Kenya
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Mock data for demonstration
-  const mockThreats: ThreatPoint[] = [
-    {
-      id: "1",
-      latitude: -1.2921,
-      longitude: 36.8219,
-      title: "Suspicious Activity - Nairobi CBD",
-      threatLevel: "high",
-      threatScore: 0.75,
-      timestamp: new Date().toISOString(),
-      location: "Nairobi CBD, Kenya",
-      category: "social_unrest",
-    },
-    {
-      id: "2",
-      latitude: -1.2864,
-      longitude: 36.8172,
-      title: "Cyber Threat Alert - Banking Sector",
-      threatLevel: "medium",
-      threatScore: 0.65,
-      timestamp: new Date().toISOString(),
-      location: "Westlands, Nairobi",
-      category: "cyber",
-    },
-    {
-      id: "3",
-      latitude: -1.3032,
-      longitude: 36.8225,
-      title: "CCTV Anomaly Detection",
-      threatLevel: "medium",
-      threatScore: 0.58,
-      timestamp: new Date().toISOString(),
-      location: "Industrial Area, Nairobi",
-      category: "criminal",
-    },
-  ];
-
-  const mockHotspots: Hotspot[] = [
-    {
-      id: "h1",
-      latitude: -1.2921,
-      longitude: 36.8219,
-      locationName: "Nairobi CBD",
-      probability: 0.75,
-      severity: "high",
-      threatType: "social_unrest",
-      radius: 2000,
-    },
-    {
-      id: "h2",
-      latitude: -1.2864,
-      longitude: 36.8172,
-      locationName: "Westlands",
-      probability: 0.45,
-      severity: "medium",
-      threatType: "criminal",
-      radius: 1500,
-    },
-  ];
-
-  const displayThreats = threats.length > 0 ? threats : mockThreats;
-  const displayHotspots = hotspots.length > 0 ? hotspots : mockHotspots;
+  // Use only real data - no mock data
+  const displayThreats = threats;
+  const displayHotspots = hotspots;
 
   const getThreatIcon = (threatLevel: string) => {
     const iconColors = {
@@ -228,37 +172,63 @@ export default function ThreatMap({
             }}
           >
             <Popup>
-              <div style={{ minWidth: "250px" }}>
-                <h4 style={{ margin: "0 0 8px 0" }}>{threat.title}</h4>
+              <div style={{ 
+                minWidth: "280px",
+                background: "#ffffff",
+                borderRadius: "8px",
+                padding: "16px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+              }}>
+                <h4 style={{ 
+                  margin: "0 0 12px 0", 
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  color: "#1a1a1a",
+                  lineHeight: "1.3"
+                }}>{threat.title}</h4>
                 <Space
                   direction="vertical"
                   size="small"
                   style={{ width: "100%" }}
                 >
-                  <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <Badge
                       color={getSeverityBadgeColor(threat.threatLevel)}
                       text={threat.threatLevel.toUpperCase()}
+                      style={{ fontSize: "11px", fontWeight: "bold" }}
                     />
-                    <span style={{ marginLeft: "8px" }}>
+                    <span style={{ 
+                      fontSize: "13px", 
+                      fontWeight: "500",
+                      color: "#333"
+                    }}>
                       Score: {(threat.threatScore * 100).toFixed(1)}%
                     </span>
                   </div>
                   <div>
-                    <strong>Location:</strong> {threat.location}
+                    <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>Location:</strong> 
+                    <span style={{ color: "#555", fontSize: "13px", marginLeft: "4px" }}>
+                      {threat.location}
+                    </span>
                   </div>
                   <div>
-                    <strong>Category:</strong> {threat.category}
+                    <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>Category:</strong> 
+                    <span style={{ color: "#555", fontSize: "13px", marginLeft: "4px" }}>
+                      {threat.category}
+                    </span>
                   </div>
                   <div>
-                    <strong>Time:</strong>{" "}
-                    {new Date(threat.timestamp).toLocaleString()}
+                    <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>Time:</strong>{" "}
+                    <span style={{ color: "#555", fontSize: "12px" }}>
+                      {new Date(threat.timestamp).toLocaleString()}
+                    </span>
                   </div>
                   <Button
                     type="primary"
                     size="small"
                     icon={<EyeOutlined />}
                     onClick={() => onThreatClick?.(threat)}
+                    style={{ marginTop: "8px", fontWeight: "bold" }}
                   >
                     View Details
                   </Button>
@@ -285,12 +255,27 @@ export default function ThreatMap({
             }}
           >
             <Popup>
-              <div style={{ minWidth: "250px" }}>
-                <h4 style={{ margin: "0 0 8px 0" }}>
+              <div style={{ 
+                minWidth: "280px",
+                background: "#ffffff",
+                borderRadius: "8px",
+                padding: "16px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+              }}>
+                <h4 style={{ 
+                  margin: "0 0 12px 0",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  color: "#1a1a1a",
+                  lineHeight: "1.3",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}>
                   <FireOutlined
                     style={{
                       color: getHotspotColor(hotspot.severity),
-                      marginRight: "8px",
+                      fontSize: "18px",
                     }}
                   />
                   {hotspot.locationName}
@@ -300,26 +285,38 @@ export default function ThreatMap({
                   size="small"
                   style={{ width: "100%" }}
                 >
-                  <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <Badge
                       color={getSeverityBadgeColor(hotspot.severity)}
                       text={hotspot.severity.toUpperCase()}
+                      style={{ fontSize: "11px", fontWeight: "bold" }}
                     />
-                    <span style={{ marginLeft: "8px" }}>
+                    <span style={{ 
+                      fontSize: "13px", 
+                      fontWeight: "500",
+                      color: "#333"
+                    }}>
                       Risk: {(hotspot.probability * 100).toFixed(1)}%
                     </span>
                   </div>
                   <div>
-                    <strong>Threat Type:</strong> {hotspot.threatType}
+                    <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>Threat Type:</strong> 
+                    <span style={{ color: "#555", fontSize: "13px", marginLeft: "4px" }}>
+                      {hotspot.threatType}
+                    </span>
                   </div>
                   <div>
-                    <strong>Radius:</strong> {hotspot.radius}m
+                    <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>Radius:</strong> 
+                    <span style={{ color: "#555", fontSize: "13px", marginLeft: "4px" }}>
+                      {hotspot.radius}m
+                    </span>
                   </div>
                   <Button
                     type="primary"
                     size="small"
                     icon={<EyeOutlined />}
                     onClick={() => onHotspotClick?.(hotspot)}
+                    style={{ marginTop: "8px", fontWeight: "bold" }}
                   >
                     View Hotspot
                   </Button>
@@ -329,84 +326,6 @@ export default function ThreatMap({
           </Circle>
         ))}
       </MapContainer>
-
-      {/* Map Legend */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          right: "20px",
-          background: "#161b22",
-          border: "1px solid #30363d",
-          padding: "12px 14px",
-          borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-          zIndex: 1001,
-          fontSize: "12px",
-          color: "#e6edf3",
-          minWidth: "150px",
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 600,
-            marginBottom: "8px",
-            color: "#e6edf3",
-            letterSpacing: "0.02em",
-          }}
-        >
-          Threat Levels
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-          {[
-            { color: "#f85149", label: "Critical" },
-            { color: "#f0883e", label: "High" },
-            { color: "#e3b341", label: "Medium" },
-            { color: "#3fb950", label: "Low" },
-          ].map(({ color, label }) => (
-            <div
-              key={label}
-              style={{ display: "flex", alignItems: "center", gap: "8px" }}
-            >
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: color,
-                  flexShrink: 0,
-                }}
-              />
-              <span style={{ color: "#c9d1d9" }}>{label}</span>
-            </div>
-          ))}
-        </div>
-        <div
-          style={{
-            fontWeight: 600,
-            marginTop: "12px",
-            marginBottom: "8px",
-            color: "#e6edf3",
-            letterSpacing: "0.02em",
-          }}
-        >
-          Hotspots
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "16px",
-              height: "16px",
-              borderRadius: "50%",
-              backgroundColor: "#f0883e",
-              opacity: 0.4,
-              flexShrink: 0,
-              border: "1px solid #f0883e",
-            }}
-          />
-          <span style={{ color: "#c9d1d9" }}>Predicted Risk Areas</span>
-        </div>
-      </div>
     </div>
   );
 }

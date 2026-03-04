@@ -25,18 +25,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSoc
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws/alerts")
-                .setAllowedOriginPatterns("*")
                 .withSockJS();
         
         // Add additional endpoint for direct WebSocket connections
-        registry.addEndpoint("/ws/alerts-direct")
-                .setAllowedOriginPatterns("*");
+        registry.addEndpoint("/ws/alerts-direct");
     }
     
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(alertWebSocketHandler(), "/ws/alerts-direct")
-                .setAllowedOrigins("*");
+        registry.addHandler(alertWebSocketHandler(), "/ws/alerts-direct");
     }
     
     @Bean

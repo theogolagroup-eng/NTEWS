@@ -6,56 +6,29 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-
 @Configuration
 public class CorsConfig {
 
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowCredentials(true);
+        corsConfig.setAllowCredentials(false); // Disable credentials for simpler CORS
         
-        // Allow multiple origins for development and production
-        corsConfig.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000",  // React development server
-            "http://localhost:3001",  // Alternative React port
-            "http://localhost:8080",  // API Gateway itself
-            "http://127.0.0.1:3000", // Localhost alternative
-            "http://127.0.0.1:8080"  // API Gateway alternative
-        ));
+        // Single pattern to avoid duplicate headers
+        corsConfig.addAllowedOriginPattern("http://localhost:*");
+        corsConfig.addAllowedOriginPattern("http://127.0.0.1:*");
         
-        // Allow all headers for maximum compatibility
-        corsConfig.setAllowedHeaders(Arrays.asList(
-            "Content-Type", 
-            "Authorization", 
-            "X-Requested-With",
-            "Accept",
-            "Origin",
-            "Access-Control-Request-Method",
-            "Access-Control-Request-Headers",
-            "X-Auth-Token",
-            "X-API-Key"
-        ));
+        // Allow all headers
+        corsConfig.addAllowedHeader("*");
         
         // Allow all necessary methods
-        corsConfig.setAllowedMethods(Arrays.asList(
-            "GET", 
-            "POST", 
-            "PUT", 
-            "DELETE", 
-            "OPTIONS", 
-            "PATCH",
-            "HEAD"
-        ));
-        
-        // Expose headers for frontend access
-        corsConfig.setExposedHeaders(Arrays.asList(
-            "Content-Type",
-            "Authorization",
-            "X-Total-Count",
-            "X-Page-Count"
-        ));
+        corsConfig.addAllowedMethod("GET");
+        corsConfig.addAllowedMethod("POST");
+        corsConfig.addAllowedMethod("PUT");
+        corsConfig.addAllowedMethod("DELETE");
+        corsConfig.addAllowedMethod("OPTIONS");
+        corsConfig.addAllowedMethod("PATCH");
+        corsConfig.addAllowedMethod("HEAD");
         
         // Set max age for preflight requests
         corsConfig.setMaxAge(3600L);

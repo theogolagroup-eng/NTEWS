@@ -92,9 +92,8 @@ function DataSourcesPage() {
 
   useEffect(() => {
     checkAllServices();
-    // Auto-refresh disabled to prevent UI interference
-    // const interval = setInterval(checkAllServices, 30000); // Check every 30 seconds
-    // return () => clearInterval(interval);
+    const interval = setInterval(checkAllServices, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
   }, []);
 
   const checkAllServices = async () => {
@@ -105,7 +104,7 @@ function DataSourcesPage() {
       const services = [
         { name: 'Intelligence Service', type: 'intelligence' as const, endpoint: API_ENDPOINTS.INTELLIGENCE.DASHBOARD },
         { name: 'Alert Service', type: 'alerts' as const, endpoint: API_ENDPOINTS.ALERTS.DASHBOARD },
-        { name: 'Prediction Service', type: 'predictions' as const, endpoint: API_ENDPOINTS.INTELLIGENCE.PREDICTIONS },
+        { name: 'Prediction Service', type: 'predictions' as const, endpoint: API_ENDPOINTS.PREDICTIONS.DASHBOARD },
         { name: 'All Alerts', type: 'alerts' as const, endpoint: API_ENDPOINTS.ALERTS.ALL },
       ];
 
