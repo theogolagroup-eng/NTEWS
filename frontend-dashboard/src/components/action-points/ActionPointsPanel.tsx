@@ -122,6 +122,8 @@ export default function ActionPointsPanel({
 
     updateActionPoint,
 
+    deleteActionPoint,
+
     assignActionPoint,
 
     completeActionPoint,
@@ -153,6 +155,8 @@ export default function ActionPointsPanel({
   const [form] = Form.useForm();
 
   const [detailForm] = Form.useForm();
+
+  const [expandedAIRecommendations, setExpandedAIRecommendations] = useState<Set<string>>(new Set());
 
 
 
@@ -190,23 +194,23 @@ export default function ActionPointsPanel({
 
       case "completed":
 
-        return <CheckCircleOutlined style={{ color: "#52c41a" }} />;
+        return <CheckCircleOutlined style={{ color: themeStyles.successColor }} />;
 
       case "in_progress":
 
-        return <ClockCircleOutlined style={{ color: "#1890ff" }} />;
+        return <ClockCircleOutlined style={{ color: themeStyles.infoColor }} />;
 
       case "pending":
 
-        return <ExclamationCircleOutlined style={{ color: "#fa8c16" }} />;
+        return <ExclamationCircleOutlined style={{ color: themeStyles.warningColor }} />;
 
       case "cancelled":
 
-        return <DeleteOutlined style={{ color: "#ff4d4f" }} />;
+        return <DeleteOutlined style={{ color: themeStyles.errorColor }} />;
 
       default:
 
-        return <ClockCircleOutlined style={{ color: "#8c8c8c" }} />;
+        return <ClockCircleOutlined style={{ color: themeStyles.mutedTextColor }} />;
 
     }
 
@@ -220,23 +224,23 @@ export default function ActionPointsPanel({
 
       case "critical":
 
-        return "red";
+        return themeStyles.kenyanRed;
 
       case "high":
 
-        return "orange";
+        return themeStyles.kenyanGreen;
 
       case "medium":
 
-        return "gold";
+        return themeStyles.kenyanBlack;
 
       case "low":
 
-        return "green";
+        return themeStyles.kenyanWhite;
 
       default:
 
-        return "default";
+        return themeStyles.mutedTextColor;
 
     }
 
@@ -286,37 +290,45 @@ export default function ActionPointsPanel({
 
     try {
 
-      await createActionPoint({
+      const actionData: any = {
 
         title: values.title,
 
         description: values.description,
 
-        type: values.type,
+        type: values.type, // This should be the string value, backend will handle enum conversion
 
-        priority: values.priority,
+        priority: values.priority, // This should be the string value, backend will handle enum conversion
 
         status: "pending",
 
-        createdBy: "System Analyst", // In real app, get from auth context
+        createdBy: "System Analyst",
 
         dueDate: values.dueDate?.toISOString(),
-
-        relatedAlertId,
-
-        relatedThreatId,
-
-        relatedHotspotId,
-
-        actions: [],
 
         humanApprovalRequired: values.humanApprovalRequired,
 
         autoTriggered: values.autoTriggered,
 
-      });
+        actions: [], // Initialize with empty actions array
 
+        escalationLevel: 0,
 
+        completionPercentage: 0.0
+
+      };
+
+      // Only add related IDs if they exist and are not empty
+
+      if (relatedAlertId) actionData.relatedAlertId = relatedAlertId;
+
+      if (relatedThreatId) actionData.relatedThreatId = relatedThreatId;
+
+      if (relatedHotspotId) actionData.relatedHotspotId = relatedHotspotId;
+
+      console.log('Creating action point with data:', actionData);
+
+      await createActionPoint(actionData);
 
       message.success("Action point created successfully");
 
@@ -325,6 +337,8 @@ export default function ActionPointsPanel({
       form.resetFields();
 
     } catch (error) {
+
+      console.error('Create action point error:', error);
 
       message.error("Failed to create action point");
 
@@ -352,6 +366,32 @@ export default function ActionPointsPanel({
 
 
 
+  const handleDeleteAction = async (actionId: string) => {
+    try {
+      // Use the improved delete function from context
+      await deleteActionPoint(actionId);
+    } catch (error) {
+      message.error("Failed to delete action point");
+    }
+  };
+
+  const [deletingActionId, setDeletingActionId] = useState<string | null>(null);
+
+  const handleDeleteActionWithLock = async (actionId: string) => {
+    if (deletingActionId === actionId) {
+      return; // Prevent multiple clicks
+    }
+    
+    setDeletingActionId(actionId);
+    try {
+      await handleDeleteAction(actionId);
+    } finally {
+      setDeletingActionId(null);
+    }
+  };
+
+
+
   const handleGenerateAIRecommendation = async (actionId: string) => {
 
     try {
@@ -365,6 +405,30 @@ export default function ActionPointsPanel({
       message.error("Failed to generate AI recommendation");
 
     }
+
+  };
+
+
+
+  const toggleAIRecommendation = (actionId: string) => {
+
+    setExpandedAIRecommendations(prev => {
+
+      const newSet = new Set(prev);
+
+      if (newSet.has(actionId)) {
+
+        newSet.delete(actionId);
+
+      } else {
+
+        newSet.add(actionId);
+
+      }
+
+      return newSet;
+
+    });
 
   };
 
@@ -439,97 +503,64 @@ export default function ActionPointsPanel({
   };
 
 
-
   const completionPercentage = (action: ActionPoint) => {
-
     if (!action.actions || action.actions.length === 0) return 0;
-
     const completed = action.actions.filter((a) => a.completed).length;
-
     return Math.round((completed / action.actions.length) * 100);
-
   };
 
-
-
   return (
-
-    <div>
-
-      {/* Header */}
-
+    <div style={{ 
+      padding: "20px",
+      background: "linear-gradient(135deg, " + themeStyles.kenyanBlack + " 25%, " + themeStyles.kenyanRed + " 25%, " + themeStyles.kenyanRed + " 50%, " + themeStyles.kenyanGreen + " 50%, " + themeStyles.kenyanBlack + " 75%)"
+    }}>
+      {/* Header with Kenyan flag theme */}
       <div
-
         style={{
-
           display: "flex",
-
           justifyContent: "space-between",
-
           alignItems: "center",
-
           marginBottom: "16px",
-
+          padding: "16px",
+          background: themeStyles.kenyanRed,
+          border: `2px solid ${themeStyles.kenyanBlack}`,
+          borderRadius: "8px"
         }}
-
       >
-
         <div>
-
           <h3
-
             style={{
-
-              color: themeStyles.textColor,
-
+              color: themeStyles.kenyanWhite,
               margin: 0,
-
               fontSize: "16px",
-
-              fontWeight: "600",
-
+              fontWeight: "bold",
             }}
-
           >
-
-            Action Points
-
+            ACTION POINTS
           </h3>
-
           <p
-
             style={{
-
-              color: themeStyles.secondaryTextColor,
-
+              color: themeStyles.kenyanWhite,
               margin: 0,
-
               fontSize: "12px",
-
             }}
-
           >
-
             {relatedActionPoints.length} active actions
-
           </p>
-
         </div>
-
         <Button
-
           type="primary"
-
           icon={<PlusOutlined />}
-
           onClick={() => setShowCreateModal(true)}
-
+          style={{
+            background: themeStyles.kenyanGreen,
+            border: `2px solid ${themeStyles.kenyanWhite}`,
+            color: themeStyles.kenyanBlack,
+            fontWeight: "bold"
+          }}
         >
-
           Create Action
-
         </Button>
-
       </div>
 
 
@@ -546,9 +577,9 @@ export default function ActionPointsPanel({
 
             style={{
 
-              background: themeStyles.cardBackground,
+              background: themeStyles.kenyanBlack,
 
-              border: themeStyles.cardBorder,
+              border: `2px solid ${themeStyles.kenyanRed}`,
 
               marginBottom: "8px",
 
@@ -610,85 +641,64 @@ export default function ActionPointsPanel({
 
                   </span>
 
-                  <Tag color={getPriorityColor(action.priority)}>
+                  <Tag color={getPriorityColor(action.priority)} style={{ border: `1px solid ${themeStyles.kenyanWhite}`, color: themeStyles.kenyanWhite }}>
 
                     {action.priority.toUpperCase()}
 
                   </Tag>
 
-                  {action.autoTriggered && (
+                  <Tooltip title="View More Details">
 
-                    <Tooltip title="AI-triggered action">
+                    <EyeOutlined 
+                      style={{ color: themeStyles.kenyanWhite, fontSize: "16px", cursor: "pointer", marginLeft: "8px" }}
+                      onClick={() => showActionDetails(action)}
+                    />
 
-                      <RobotOutlined style={{ color: "#722ed1" }} />
-
-                    </Tooltip>
-
-                  )}
+                  </Tooltip>
 
                 </div>
 
 
 
                 <p
-
                   style={{
-
-                    color: themeStyles.secondaryTextColor,
-
+                    color: themeStyles.kenyanWhite,
                     margin: "4px 0",
-
-                    fontSize: "12px",
-
+                    fontSize: "13px",
+                    fontWeight: "500"
                   }}
-
                 >
-
                   {action.description}
-
                 </p>
 
-
-
-                {action.aiRecommendation && (
-
+                {action.aiRecommendation && expandedAIRecommendations.has(action.id) && (
                   <Alert
-
-                    message="AI Recommendation"
-
-                    description={action.aiRecommendation}
-
-                    type="info"
-
-                    style={{ marginBottom: "8px" }}
-
+                    message={<span style={{ color: themeStyles.kenyanBlack, fontWeight: "bold" }}>AI Recommendation</span>}
+                    description={
+                      <span style={{ color: themeStyles.kenyanBlack }}>
+                        {action.aiRecommendation}
+                      </span>
+                    }
+                    style={{ 
+                      backgroundColor: themeStyles.kenyanRed,
+                      border: `2px solid ${themeStyles.kenyanGreen}`,
+                      marginBottom: "8px",
+                      borderRadius: '6px'
+                    }}
+                    onClick={() => toggleAIRecommendation(action.id)}
                   />
-
                 )}
-
-
 
                 {action.actions && action.actions.length > 0 && (
-
                   <div style={{ marginBottom: "8px" }}>
-
                     <Progress
-
-                      percent={completionPercentage(action)}
-
+                      percent={completionPercentage(action) as number}
                       size="small"
-
-                      strokeColor="#52c41a"
-
+                      strokeColor={themeStyles.successColor}
                       format={() => `${completionPercentage(action)}%`}
-
                     />
-
                   </div>
-
                 )}
-
-
 
                 <div
 
@@ -706,7 +716,7 @@ export default function ActionPointsPanel({
 
                 >
 
-                  <span style={{ color: themeStyles.secondaryTextColor }}>
+                  <span style={{ color: themeStyles.kenyanWhite, fontWeight: "bold" }}>
 
                     Created: {new Date(action.createdAt).toLocaleDateString()}
 
@@ -714,7 +724,7 @@ export default function ActionPointsPanel({
 
                   {action.assignedTo && (
 
-                    <span style={{ color: themeStyles.secondaryTextColor }}>
+                    <span style={{ color: themeStyles.kenyanWhite, fontWeight: "bold" }}>
 
                       • Assigned to: {action.assignedTo}
 
@@ -740,7 +750,7 @@ export default function ActionPointsPanel({
 
               <div style={{ display: "flex", gap: "4px" }}>
 
-                <Tooltip title="View Details">
+                <Tooltip title="Delete Action Point">
 
                   <Button
 
@@ -748,13 +758,34 @@ export default function ActionPointsPanel({
 
                     size="small"
 
-                    icon={<EyeOutlined />}
+                    icon={<DeleteOutlined style={{ color: themeStyles.kenyanRed, fontSize: "14px" }} />}
 
-                    onClick={() => showActionDetails(action)}
+                    onClick={() => handleDeleteActionWithLock(action.id)}
+
+                    disabled={deletingActionId === action.id}
+
+                    loading={deletingActionId === action.id}
 
                   />
 
                 </Tooltip>
+
+                {action.aiRecommendation && (
+                  <Tooltip title={expandedAIRecommendations.has(action.id) ? "Hide AI Recommendation" : "Show AI Recommendation"}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<RobotOutlined style={{ color: themeStyles.kenyanRed, fontSize: "16px" }} />}
+                      onClick={() => toggleAIRecommendation(action.id)}
+                      style={{ 
+                        border: `2px solid ${themeStyles.kenyanRed}`, 
+                        color: themeStyles.kenyanRed,
+                        backgroundColor: 'transparent',
+                        fontWeight: 'bold'
+                      }}
+                    />
+                  </Tooltip>
+                )}
 
 
 
@@ -770,9 +801,11 @@ export default function ActionPointsPanel({
 
                         size="small"
 
-                        icon={<UserOutlined />}
+                        icon={<UserOutlined style={{ color: themeStyles.kenyanWhite, fontSize: "14px" }} />}
 
                         onClick={() => handleAssignAction(action.id)}
+
+                        style={{ border: `1px solid ${themeStyles.kenyanWhite}`, color: themeStyles.kenyanWhite }}
 
                       />
 
@@ -786,9 +819,11 @@ export default function ActionPointsPanel({
 
                         size="small"
 
-                        icon={<CheckCircleOutlined />}
+                        icon={<CheckCircleOutlined style={{ color: themeStyles.kenyanGreen, fontSize: "14px" }} />}
 
                         onClick={() => handleApproveAction(action.id)}
+
+                        style={{ border: `1px solid ${themeStyles.kenyanGreen}`, color: themeStyles.kenyanGreen }}
 
                       />
 
@@ -810,9 +845,11 @@ export default function ActionPointsPanel({
 
                       size="small"
 
-                      icon={<CheckCircleOutlined />}
+                      icon={<CheckCircleOutlined style={{ color: themeStyles.kenyanGreen, fontSize: "14px" }} />}
 
                       onClick={() => handleCompleteAction(action.id)}
+
+                      style={{ border: `1px solid ${themeStyles.kenyanGreen}`, color: themeStyles.kenyanGreen }}
 
                     />
 
@@ -832,9 +869,11 @@ export default function ActionPointsPanel({
 
                       size="small"
 
-                      icon={<RobotOutlined />}
+                      icon={<RobotOutlined style={{ color: themeStyles.kenyanRed, fontSize: "14px" }} />}
 
                       onClick={() => handleGenerateAIRecommendation(action.id)}
+
+                      style={{ border: `1px solid ${themeStyles.kenyanRed}`, color: themeStyles.kenyanRed }}
 
                     />
 
@@ -862,7 +901,7 @@ export default function ActionPointsPanel({
 
         title={
 
-          <span style={{ color: "#e6edf3", fontWeight: 600 }}>
+          <span style={{ color: themeStyles.kenyanWhite, fontWeight: 600 }}>
 
             Create Action Point
 
@@ -882,9 +921,9 @@ export default function ActionPointsPanel({
 
           content: {
 
-            background: "#161b22",
+            background: themeStyles.cardBackground,
 
-            border: "1px solid #30363d",
+            border: themeStyles.cardBorder,
 
             padding: 0,
 
@@ -892,9 +931,9 @@ export default function ActionPointsPanel({
 
           header: {
 
-            background: "#161b22",
+            background: themeStyles.cardBackground,
 
-            borderBottom: "1px solid #30363d",
+            borderBottom: themeStyles.cardBorder,
 
             padding: "16px 20px",
 
@@ -902,7 +941,7 @@ export default function ActionPointsPanel({
 
           },
 
-          body: { background: "#161b22", padding: "20px" },
+          body: { background: themeStyles.cardBackground, padding: "20px" },
 
           mask: { backdropFilter: "blur(2px)" },
 
@@ -918,7 +957,15 @@ export default function ActionPointsPanel({
 
           onFinish={handleCreateAction}
 
-          style={{ color: "#e6edf3" }}
+          initialValues={{
+
+            humanApprovalRequired: false,
+
+            autoTriggered: false
+
+          }}
+
+          style={{ color: themeStyles.textColor }}
 
         >
 
@@ -926,7 +973,7 @@ export default function ActionPointsPanel({
 
             name="title"
 
-            label={<span style={{ color: "#8b949e" }}>Action Title</span>}
+            label={<span style={{ color: themeStyles.secondaryTextColor }}>Action Title</span>}
 
             rules={[{ required: true, message: "Please enter action title" }]}
 
@@ -938,11 +985,11 @@ export default function ActionPointsPanel({
 
               style={{
 
-                background: "#21262d",
+                background: themeStyles.glassBackground,
 
-                border: "1px solid #30363d",
+                border: themeStyles.cardBorder,
 
-                color: "#e6edf3",
+                color: themeStyles.textColor,
 
               }}
 
@@ -956,7 +1003,7 @@ export default function ActionPointsPanel({
 
             name="description"
 
-            label={<span style={{ color: "#8b949e" }}>Description</span>}
+            label={<span style={{ color: themeStyles.secondaryTextColor }}>Description</span>}
 
             rules={[{ required: true, message: "Please enter description" }]}
 
@@ -970,11 +1017,11 @@ export default function ActionPointsPanel({
 
               style={{
 
-                background: "#21262d",
+                background: themeStyles.glassBackground,
 
-                border: "1px solid #30363d",
+                border: themeStyles.cardBorder,
 
-                color: "#e6edf3",
+                color: themeStyles.textColor,
 
               }}
 
@@ -992,7 +1039,7 @@ export default function ActionPointsPanel({
 
                 name="type"
 
-                label={<span style={{ color: "#8b949e" }}>Action Type</span>}
+                label={<span style={{ color: themeStyles.secondaryTextColor }}>Action Type</span>}
 
                 rules={[
 
@@ -1050,7 +1097,7 @@ export default function ActionPointsPanel({
 
                 name="priority"
 
-                label={<span style={{ color: "#8b949e" }}>Priority</span>}
+                label={<span style={{ color: themeStyles.secondaryTextColor }}>Priority</span>}
 
                 rules={[{ required: true, message: "Please select priority" }]}
 
@@ -1104,7 +1151,11 @@ export default function ActionPointsPanel({
 
             label={
 
-              <span style={{ color: "#8b949e" }}>Due Date (Optional)</span>
+              <span style={{ color: themeStyles.secondaryTextColor }}>
+
+                Due Date (Optional)
+
+              </span>
 
             }
 
@@ -1116,11 +1167,11 @@ export default function ActionPointsPanel({
 
                 width: "100%",
 
-                background: "#21262d",
+                background: themeStyles.glassBackground,
 
-                border: "1px solid #30363d",
+                border: themeStyles.cardBorder,
 
-                color: "#e6edf3",
+                color: themeStyles.textColor,
 
               }}
 
@@ -1140,7 +1191,7 @@ export default function ActionPointsPanel({
 
                 label={
 
-                  <span style={{ color: "#8b949e" }}>
+                  <span style={{ color: themeStyles.secondaryTextColor }}>
 
                     Human Approval Required
 
@@ -1154,8 +1205,6 @@ export default function ActionPointsPanel({
 
                 <Select
 
-                  defaultValue={false}
-
                   style={{ width: "100%" }}
 
                   styles={{
@@ -1164,9 +1213,9 @@ export default function ActionPointsPanel({
 
                       root: {
 
-                        background: "#21262d",
+                        background: themeStyles.glassBackground,
 
-                        border: "1px solid #30363d",
+                        border: themeStyles.cardBorder,
 
                       },
 
@@ -1192,15 +1241,13 @@ export default function ActionPointsPanel({
 
                 name="autoTriggered"
 
-                label={<span style={{ color: "#8b949e" }}>Auto-triggered</span>}
+                label={<span style={{ color: themeStyles.secondaryTextColor }}>Auto-triggered</span>}
 
                 valuePropName="checked"
 
               >
 
                 <Select
-
-                  defaultValue={false}
 
                   style={{ width: "100%" }}
 
@@ -1210,9 +1257,9 @@ export default function ActionPointsPanel({
 
                       root: {
 
-                        background: "#21262d",
+                        background: themeStyles.glassBackground,
 
-                        border: "1px solid #30363d",
+                        border: themeStyles.cardBorder,
 
                       },
 
@@ -1246,11 +1293,11 @@ export default function ActionPointsPanel({
 
                 style={{
 
-                  background: "#21262d",
+                  background: themeStyles.glassBackground,
 
-                  border: "1px solid #30363d",
+                  border: themeStyles.cardBorder,
 
-                  color: "#e6edf3",
+                  color: themeStyles.textColor,
 
                 }}
 
@@ -1281,13 +1328,12 @@ export default function ActionPointsPanel({
       <Modal
 
         title={
-
-          <span style={{ color: "#e6edf3", fontWeight: 600 }}>
-
-            Action Point Details
-
-          </span>
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <EyeOutlined style={{ color: themeStyles.kenyanWhite, fontSize: '18px' }} />
+            <span style={{ color: themeStyles.kenyanWhite, fontWeight: 600 }}>
+              Action Point Details
+            </span>
+          </div>
         }
 
         open={showDetailModal}
@@ -1299,33 +1345,19 @@ export default function ActionPointsPanel({
         width={700}
 
         styles={{
-
           content: {
-
-            background: "#161b22",
-
-            border: "1px solid #30363d",
-
+            background: themeStyles.kenyanBlack,
+            border: `2px solid ${themeStyles.kenyanRed}`,
             padding: 0,
-
           },
-
           header: {
-
-            background: "#161b22",
-
-            borderBottom: "1px solid #30363d",
-
+            background: themeStyles.kenyanRed,
+            borderBottom: `2px solid ${themeStyles.kenyanBlack}`,
             padding: "16px 20px",
-
             marginBottom: 0,
-
           },
-
-          body: { background: "#161b22", padding: "20px" },
-
+          body: { background: themeStyles.kenyanBlack, padding: "20px" },
           mask: { backdropFilter: "blur(2px)" },
-
         }}
 
       >
@@ -1336,61 +1368,52 @@ export default function ActionPointsPanel({
 
             <div style={{ marginBottom: "16px" }}>
 
-              <h4 style={{ color: "#e6edf3", marginBottom: "8px" }}>
+              <h4 style={{ color: themeStyles.kenyanWhite, marginBottom: "8px" }}>
 
-                {selectedAction.title}
+                {selectedAction?.title}
 
               </h4>
 
-              <p style={{ color: "#8b949e", marginBottom: "8px" }}>
+              <p style={{ color: themeStyles.kenyanWhite, marginBottom: "8px" }}>
 
-                {selectedAction.description}
+                {selectedAction?.description}
 
               </p>
 
               <div style={{ display: "flex", gap: "8px" }}>
 
-                <Tag color={getPriorityColor(selectedAction.priority)}>
-
-                  {selectedAction.priority.toUpperCase()}
-
+                <Tag color={selectedAction?.priority ? getPriorityColor(selectedAction?.priority) : themeStyles.kenyanRed} style={{ border: `1px solid ${themeStyles.kenyanWhite}`, color: themeStyles.kenyanWhite }}>
+                  {selectedAction?.priority?.toUpperCase()}
                 </Tag>
-
-                <Tag>{selectedAction.type.toUpperCase()}</Tag>
-
-                <Tag color={getPriorityColor(selectedAction.priority)}>
-
-                  {selectedAction.priority.toUpperCase()}
-
+                <Tag color={themeStyles.kenyanGreen} style={{ border: `1px solid ${themeStyles.kenyanWhite}`, color: themeStyles.kenyanBlack }}>
+                  {selectedAction?.type?.toUpperCase()}
                 </Tag>
 
               </div>
 
             </div>
 
-            {selectedAction.aiRecommendation && (
-
+            {selectedAction?.aiRecommendation && (
               <Alert
-
                 message="AI Recommendation"
-
-                description={selectedAction.aiRecommendation}
-
-                type="info"
-
+                description={selectedAction?.aiRecommendation}
+                style={{ 
+                  backgroundColor: themeStyles.kenyanRed,
+                  border: `2px solid ${themeStyles.kenyanGreen}`,
+                  borderRadius: '6px'
+                }}
               />
-
             )}
 
             <Form form={detailForm} layout="vertical">
-
               <Form.Item
-
                 name="humanNotes"
-
                 label={
+                  <span style={{ color: themeStyles.kenyanWhite, fontWeight: "bold" }}>
 
-                  <span style={{ color: "#8b949e" }}>Human Analyst Notes</span>
+                    Human Analyst Notes
+
+                  </span>
 
                 }
 
@@ -1403,23 +1426,15 @@ export default function ActionPointsPanel({
                   placeholder="Add your notes and observations..."
 
                   style={{
-
-                    background: "#21262d",
-
-                    border: "1px solid #30363d",
-
-                    color: "#e6edf3",
-
+                    background: themeStyles.kenyanBlack,
+                    border: `1px solid ${themeStyles.kenyanRed}`,
+                    color: themeStyles.kenyanWhite,
                   }}
 
                   onChange={(e) =>
-
-                    updateActionPoint(selectedAction.id, {
-
+                    selectedAction?.id && updateActionPoint(selectedAction.id, {
                       humanNotes: e.target.value,
-
                     })
-
                   }
 
                 />
@@ -1428,7 +1443,7 @@ export default function ActionPointsPanel({
 
             </Form>
 
-            <Divider style={{ borderColor: "#30363d" }} />
+            <Divider style={{ borderColor: themeStyles.kenyanRed }} />
 
           </div>
 

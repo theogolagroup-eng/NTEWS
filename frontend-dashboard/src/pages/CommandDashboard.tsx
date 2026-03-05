@@ -264,166 +264,207 @@ function CommandDashboard() {
 
       setError(null);
 
-      
-
       // Fetch all dashboard data in parallel through API Gateway with timeout
-
       const timeoutPromise = new Promise((_, reject) => 
-
         setTimeout(() => reject(new Error('Request timeout')), 10000)
-
       );
-
       
-
+      // Fetch data from API endpoints
       const [intelData, alertData, predictionData, allAlerts] = await Promise.all([
-
-        Promise.race([apiClient.get(API_ENDPOINTS.INTELLIGENCE.DASHBOARD).catch(() => ({ totalReports: 0, activeThreats: 0, criticalThreats: 0, highThreats: 0, mediumThreats: 0, lowThreats: 0, categoryCounts: [], recentThreats: [] })), timeoutPromise]),
-
-        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.DASHBOARD).catch(() => ({ totalAlerts: 0, activeAlerts: 0, unacknowledgedAlerts: 0, criticalAlerts: 0, highAlerts: 0, mediumAlerts: 0, lowAlerts: 0, severityCounts: [], recentAlerts: [] })), timeoutPromise]),
-
-        Promise.race([apiClient.get(API_ENDPOINTS.PREDICTIONS.DASHBOARD).catch(() => ({ activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] })), timeoutPromise]),
-
-        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.ALL).catch(() => ({ content: [] })), timeoutPromise])
-
+        Promise.race([apiClient.get(API_ENDPOINTS.INTELLIGENCE.DASHBOARD), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.DASHBOARD), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.PREDICTIONS.DASHBOARD), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.ALL), timeoutPromise])
+        // Temporarily commented out - hotspots endpoint not available yet
+        // Promise.race([apiClient.get(API_ENDPOINTS.PREDICTIONS.HOTSPOTS), timeoutPromise])
       ]);
-
-
-
-      // Process alerts data similar to AlertsPage
-
-      const alertsList = allAlerts?.content || [];
-
-      const activeAlerts = alertsList.filter((alert: Alert) => alert.status === 'active');
-
-      const criticalAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'critical');
-
-      const highAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'high');
-
-      const mediumAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'medium');
-
-      const lowAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'low');
-
       
+      // Mock hotspots data temporarily until endpoint is available
+      const hotspotsData = [
+        {
+          id: "hotspot-001",
+          locationName: "Nairobi Central Business District",
+          location: "Nairobi, Kenya",
+          latitude: -1.2921,
+          longitude: 36.8219,
+          severity: "high",
+          riskLevel: "high",
+          probability: 0.92,
+          confidence: 0.92,
+          threatType: "Terrorism Threat",
+          type: "terrorism",
+          radius: 2000
+        },
+        {
+          id: "hotspot-002",
+          locationName: "Mombasa Port Area",
+          location: "Mombasa, Kenya",
+          latitude: -4.0435,
+          longitude: 39.6682,
+          severity: "medium",
+          riskLevel: "medium",
+          probability: 0.75,
+          confidence: 0.75,
+          threatType: "Cyber Attack",
+          type: "cyber",
+          radius: 1500
+        },
+        {
+          id: "hotspot-003",
+          locationName: "Kisumu City Center",
+          location: "Kisumu, Kenya",
+          latitude: -0.1022,
+          longitude: 34.7617,
+          severity: "medium",
+          riskLevel: "medium",
+          probability: 0.68,
+          confidence: 0.68,
+          threatType: "Civil Unrest",
+          type: "civil_unrest",
+          radius: 1800
+        },
+        {
+          id: "hotspot-004",
+          locationName: "Eldoret Town",
+          location: "Eldoret, Kenya",
+          latitude: 0.5143,
+          longitude: 35.2698,
+          severity: "low",
+          riskLevel: "low",
+          probability: 0.45,
+          confidence: 0.45,
+          threatType: "Organized Crime",
+          type: "organized_crime",
+          radius: 1200
+        },
+        {
+          id: "hotspot-005",
+          locationName: "Garissa County",
+          location: "Garissa, Kenya",
+          latitude: -0.4528,
+          longitude: 39.6460,
+          severity: "high",
+          riskLevel: "high",
+          probability: 0.88,
+          confidence: 0.88,
+          threatType: "Border Security",
+          type: "border_security",
+          radius: 2500
+        }
+      ];
 
-      // Create recent alerts list
-
+      // Process alerts data similar to AlertsPage - using the same successful pattern
+      const alertsList = allAlerts?.content || [];
+      const activeAlerts = alertsList.filter((alert: Alert) => alert.status === 'active');
+      const criticalAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'critical');
+      const highAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'high');
+      const mediumAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'medium');
+      const lowAlerts = activeAlerts.filter((alert: Alert) => alert.severity === 'low');
+      
+      // Create recent alerts list with proper field mapping
       const recentAlerts = alertsList.slice(0, 5).map((alert: Alert) => ({
-
         id: alert.id,
-
         title: alert.title,
-
         severity: alert.severity,
-
         priority: alert.priority,
-
         status: alert.status,
-
         timestamp: alert.createdAt || alert.timestamp,
-
-        location: alert.location?.address || alert.location
-
+        location: alert.location?.address || `${alert.location?.city || 'Unknown'}, ${alert.location?.country || 'Kenya'}`
       }));
 
-
-
       setDashboardData({
-
-        intelligenceSummary: intelData || { totalReports: 0, activeThreats: 0, criticalThreats: 0, highThreats: 0, mediumThreats: 0, lowThreats: 0, categoryCounts: [], recentThreats: [] },
-
-        alertSummary: {
-
-          totalAlerts: alertsList.length,
-
-          activeAlerts: activeAlerts.length,
-
-          unacknowledgedAlerts: activeAlerts.filter((alert: Alert) => alert.status === 'active').length,
-
-          criticalAlerts: criticalAlerts.length,
-
-          highAlerts: highAlerts.length,
-
-          mediumAlerts: mediumAlerts.length,
-
-          lowAlerts: lowAlerts.length,
-
-          severityCounts: [
-            { severity: 'critical', count: criticalAlerts.length },
-            { severity: 'high', count: highAlerts.length },
-            { severity: 'medium', count: mediumAlerts.length },
-            { severity: 'low', count: lowAlerts.length }
-          ],
-          recentAlerts: recentAlerts
-
+        intelligenceSummary: {
+          totalReports: intelData?.totalReports || 0,
+          activeThreats: intelData?.activeThreats || 0,
+          criticalThreats: intelData?.criticalThreats || 0,
+          highThreats: intelData?.highThreats || 0,
+          mediumThreats: intelData?.mediumThreats || 0,
+          lowThreats: intelData?.lowThreats || 0,
+          categoryCounts: intelData?.categoryCounts || [],
+          recentThreats: intelData?.recentThreats || []
         },
-        predictionSummary: predictionData || { activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] }
-
+        alertSummary: {
+          totalAlerts: alertData?.totalAlerts || alertsList.length,
+          activeAlerts: alertData?.activeAlerts || activeAlerts.length,
+          unacknowledgedAlerts: alertData?.unacknowledgedAlerts || activeAlerts.filter((alert: Alert) => alert.status === 'active').length,
+          criticalAlerts: alertData?.criticalAlerts || criticalAlerts.length,
+          highAlerts: alertData?.highAlerts || highAlerts.length,
+          mediumAlerts: alertData?.mediumAlerts || mediumAlerts.length,
+          lowAlerts: alertData?.lowAlerts || lowAlerts.length,
+          severityCounts: alertData?.severityCounts && Object.keys(alertData.severityCounts).length > 0 
+            ? alertData.severityCounts 
+            : [
+                { severity: 'critical', count: alertData?.criticalAlerts || 0 },
+                { severity: 'high', count: alertData?.highAlerts || 0 },
+                { severity: 'medium', count: alertData?.mediumAlerts || 0 },
+                { severity: 'low', count: alertData?.lowAlerts || 0 }
+              ],
+          recentAlerts: recentAlerts
+        },
+        predictionSummary: {
+          activeHotspots: hotspotsData?.length || predictionData?.highRiskAreas || 0,
+          highRiskHotspots: hotspotsData?.filter((h: any) => h.severity === 'high' || h.riskLevel === 'high')?.length || predictionData?.highRiskAreas || 0,
+          mediumRiskHotspots: hotspotsData?.filter((h: any) => h.severity === 'medium' || h.riskLevel === 'medium')?.length || 0,
+          lowRiskHotspots: hotspotsData?.filter((h: any) => h.severity === 'low' || h.riskLevel === 'low')?.length || 0,
+          currentRiskTrend: predictionData?.averageConfidence || 0.0,
+          trendDirection: predictionData?.averageConfidence > 0.7 ? 'increasing' : 'stable',
+          topHotspots: hotspotsData?.slice(0, 4).map((hotspot: any, index: number) => ({
+            id: hotspot.id || `hotspot-${index}`,
+            locationName: hotspot.locationName || hotspot.location || hotspot.area || `Hotspot ${index + 1}`,
+            severity: hotspot.severity || hotspot.riskLevel || 'medium',
+            probability: hotspot.probability || hotspot.confidence || predictionData?.averageConfidence || 0.5,
+            threatType: hotspot.threatType || hotspot.type || 'Unknown',
+            latitude: hotspot.latitude || hotspot.coordinates?.lat,
+            longitude: hotspot.longitude || hotspot.coordinates?.lng,
+            radius: hotspot.radius || 1500
+          })) || intelData?.recentThreats?.slice(0, 4).map((threat: any, index: number) => ({
+            id: threat.id,
+            locationName: threat.location || `Location ${index + 1}`,
+            severity: threat.threatLevel,
+            probability: predictionData?.averageConfidence || 0.5,
+            threatType: threat.title?.split(' - ')[1] || 'Unknown'
+          })) || [],
+          recentTrends: []
+        }
       });
 
     } catch (err) {
-
       setError('Failed to fetch dashboard data');
-
       console.error('Dashboard fetch error:', err);
-
       // Set default data to prevent UI crashes
-
       setDashboardData({
-
         intelligenceSummary: { totalReports: 0, activeThreats: 0, criticalThreats: 0, highThreats: 0, mediumThreats: 0, lowThreats: 0, categoryCounts: [], recentThreats: [] },
-
-        alertSummary: { totalAlerts: 0, activeAlerts: 0, unacknowledgedAlerts: 0, criticalAlerts: 0, highAlerts: 0, mediumAlerts: 0, lowAlerts: 0, severityCounts: [], recentAlerts: [] },
-
-        predictionSummary: { activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: undefined, topHotspots: [], recentTrends: [] }
-
+        alertSummary: { totalAlerts: 0, activeAlerts: 0, unacknowledgedAlerts: 0, criticalAlerts: 0, highAlerts: 0, mediumAlerts: 0, lowAlerts: 0, severityCounts: [
+            { severity: 'critical', count: 0 },
+            { severity: 'high', count: 0 },
+            { severity: 'medium', count: 0 },
+            { severity: 'low', count: 0 }
+          ], recentAlerts: [] },
+        predictionSummary: { activeHotspots: 0, highRiskHotspots: 0, mediumRiskHotspots: 0, lowRiskHotspots: 0, currentRiskTrend: 0.0, trendDirection: 'stable', topHotspots: [], recentTrends: [] }
       });
 
     } finally {
-
       setLoading(false);
-
     }
-
   };
-
-
 
   const getSeverityColor = (severity: string) => {
-
     const colors = {
-
       critical: 'red',
-
       high: 'orange',
-
       medium: 'gold',
-
       low: 'green'
-
     };
-
     return colors[severity as keyof typeof colors] || 'default';
-
   };
-
-
 
   const getTrendIcon = (trend: string) => {
-
     switch (trend) {
-
-      case 'increasing': return <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />;
-
-      case 'decreasing': return <SafetyOutlined style={{ color: '#52c41a' }} />;
-
-      default: return <ClockCircleOutlined style={{ color: '#1890ff' }} />;
-
+      case 'increasing': return <ExclamationCircleOutlined style={{ color: themeStyles.errorColor }} />;
+      case 'decreasing': return <SafetyOutlined style={{ color: themeStyles.successColor }} />;
+      default: return <ClockCircleOutlined style={{ color: themeStyles.infoColor }} />;
     }
-
   };
-
-
 
   if (loading) {
 
@@ -431,7 +472,7 @@ function CommandDashboard() {
 
       <div style={{ padding: '24px', textAlign: 'center', background: themeStyles.background, minHeight: '100vh' }}>
 
-        <LoadingOutlined style={{ fontSize: '48px', color: isDarkMode ? '#1890ff' : '#1890ff' }} />
+        <LoadingOutlined style={{ fontSize: '48px', color: themeStyles.infoColor }} />
 
         <h2 style={{ color: themeStyles.textColor, textShadow: themeStyles.textShadow }}>Loading NTEWS Command Dashboard...</h2>
 
@@ -524,19 +565,13 @@ function CommandDashboard() {
               color: themeStyles.textColor, 
 
               textShadow: themeStyles.textShadow,
-              background: isDarkMode 
-
-                ? 'linear-gradient(135deg, #ff6b6b, #4ecdc4)' 
-
-                : 'linear-gradient(135deg, #1890ff, #722ed1)',
+              background: `linear-gradient(135deg, ${themeStyles.kenyanRed}, ${themeStyles.kenyanGreen})`,
 
               WebkitBackgroundClip: 'text',
 
               WebkitTextFillColor: 'transparent',
 
-              backgroundClip: 'text',
-
-              textShadow: 'none'
+              backgroundClip: 'text'
 
             }}>
 
@@ -574,13 +609,13 @@ function CommandDashboard() {
 
               borderRadius: '50%',
 
-              backgroundColor: '#52c41a',
+              backgroundColor: themeStyles.successColor,
 
-              boxShadow: '0 0 8px #52c41a'
+              boxShadow: `0 0 8px ${themeStyles.successColor}`
 
             }} />
 
-            <span style={{ fontSize: '12px', color: '#52c41a', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+            <span style={{ fontSize: '12px', color: themeStyles.successColor, fontWeight: '600', textShadow: themeStyles.textShadow }}>
 
               SYSTEMS ONLINE
 
@@ -620,19 +655,19 @@ function CommandDashboard() {
 
               <div>
 
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#1890ff', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: themeStyles.infoColor, textShadow: themeStyles.textShadow }}>
 
                   {intelligenceSummary.activeThreats}
 
                 </div>
 
-                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '14px', color: themeStyles.textColor, textTransform: 'uppercase', fontWeight: 'bold' }}>
 
                   Active Threats
 
                 </div>
 
-                <div style={{ fontSize: '10px', color: '#52c41a', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '12px', color: themeStyles.infoColor, fontWeight: '600' }}>
 
                   Total: {intelligenceSummary.totalReports}
 
@@ -640,7 +675,7 @@ function CommandDashboard() {
 
               </div>
 
-              <SafetyOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
+              <SafetyOutlined style={{ fontSize: '20px', color: themeStyles.infoColor }} />
 
             </div>
 
@@ -672,19 +707,19 @@ function CommandDashboard() {
 
               <div>
 
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#ff4d4f', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: themeStyles.errorColor, textShadow: themeStyles.textShadow }}>
 
                   {alertSummary.criticalAlerts}
 
                 </div>
 
-                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '14px', color: themeStyles.textColor, textTransform: 'uppercase', fontWeight: 'bold' }}>
 
                   Critical Alerts
 
                 </div>
 
-                <div style={{ fontSize: '10px', color: '#fa8c16', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '12px', color: themeStyles.warningColor, fontWeight: '600' }}>
 
                   Unack: {alertSummary.unacknowledgedAlerts}
 
@@ -692,7 +727,7 @@ function CommandDashboard() {
 
               </div>
 
-              <ExclamationCircleOutlined style={{ fontSize: '20px', color: '#ff4d4f' }} />
+              <ExclamationCircleOutlined style={{ fontSize: '20px', color: themeStyles.errorColor }} />
 
             </div>
 
@@ -724,19 +759,19 @@ function CommandDashboard() {
 
               <div>
 
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#fa8c16', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: themeStyles.warningColor, textShadow: themeStyles.textShadow }}>
 
                   {predictionSummary.activeHotspots}
 
                 </div>
 
-                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '14px', color: themeStyles.textColor, textTransform: 'uppercase', fontWeight: 'bold' }}>
 
                   Active Hotspots
 
                 </div>
 
-                <div style={{ fontSize: '10px', color: '#ff4d4f', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '12px', color: themeStyles.errorColor, fontWeight: '600' }}>
 
                   High Risk: {predictionSummary.highRiskHotspots}
 
@@ -744,7 +779,7 @@ function CommandDashboard() {
 
               </div>
 
-              <FireOutlined style={{ fontSize: '20px', color: '#fa8c16' }} />
+              <FireOutlined style={{ fontSize: '20px', color: themeStyles.warningColor }} />
 
             </div>
 
@@ -776,19 +811,19 @@ function CommandDashboard() {
 
               <div>
 
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#52c41a', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: themeStyles.successColor, textShadow: themeStyles.textShadow }}>
 
                   {alertSummary.activeAlerts}
 
                 </div>
 
-                <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textTransform: 'uppercase', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '14px', color: themeStyles.textColor, textTransform: 'uppercase', fontWeight: 'bold' }}>
 
-                  Total Alerts
+                  Active Alerts
 
                 </div>
 
-                <div style={{ fontSize: '10px', color: '#1890ff', marginTop: '2px', textShadow: themeStyles.textShadow }}>
+                <div style={{ fontSize: '12px', color: themeStyles.successColor, fontWeight: '600' }}>
 
                   System Active
 
@@ -796,7 +831,7 @@ function CommandDashboard() {
 
               </div>
 
-              <BellOutlined style={{ fontSize: '20px', color: '#52c41a' }} />
+              <BellOutlined style={{ fontSize: '20px', color: themeStyles.successColor }} />
 
             </div>
 
@@ -836,11 +871,11 @@ function CommandDashboard() {
 
               <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
 
-                <BellOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                <BellOutlined style={{ marginRight: '8px', color: themeStyles.successColor }} />
 
                 LIVE ALERTS
 
-                <Badge count={alertSummary.activeAlerts} style={{ marginLeft: '8px', backgroundColor: '#52c41a' }} />
+                <Badge count={alertSummary.activeAlerts} style={{ marginLeft: '8px', backgroundColor: themeStyles.successColor }} />
 
               </div>
 
@@ -958,11 +993,11 @@ function CommandDashboard() {
 
               <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
 
-                <FireOutlined style={{ marginRight: '8px', color: '#fa8c16' }} />
+                <FireOutlined style={{ marginRight: '8px', color: themeStyles.warningColor }} />
 
                 THREAT HOTSPOTS
 
-                <Badge count={predictionSummary.activeHotspots} style={{ marginLeft: '8px', backgroundColor: '#fa8c16' }} />
+                <Badge count={predictionSummary.activeHotspots} style={{ marginLeft: '8px', backgroundColor: themeStyles.warningColor }} />
 
               </div>
 
@@ -1022,7 +1057,7 @@ function CommandDashboard() {
 
                       </Tag>
 
-                      <span style={{ fontSize: '11px', color: '#52c41a', fontWeight: '600', textShadow: themeStyles.textShadow }}>
+                      <span style={{ fontSize: '11px', color: themeStyles.successColor, fontWeight: '600', textShadow: themeStyles.textShadow }}>
 
                         {(hotspot.probability * 100).toFixed(0)}%
 
@@ -1074,7 +1109,7 @@ function CommandDashboard() {
 
               <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
 
-                <EnvironmentOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+                <EnvironmentOutlined style={{ marginRight: '8px', color: themeStyles.infoColor }} />
 
                 THREAT MAP
 
@@ -1183,7 +1218,7 @@ function CommandDashboard() {
 
               <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
 
-                <RiseOutlined style={{ marginRight: '8px', color: '#722ed1' }} />
+                <RiseOutlined style={{ marginRight: '8px', color: themeStyles.kenyanRed }} />
 
                 THREAT LEVELS
 
@@ -1265,7 +1300,7 @@ function CommandDashboard() {
 
               <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
 
-                <BellOutlined style={{ marginRight: '8px', color: '#52c41a' }} />
+                <BellOutlined style={{ marginRight: '8px', color: themeStyles.successColor }} />
 
                 ACTION POINTS
 

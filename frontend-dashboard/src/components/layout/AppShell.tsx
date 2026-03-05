@@ -426,13 +426,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               const active = !!pathname?.startsWith(href);
 
+              // Determine color class based on label
+              let colorClass = "";
+              if (label === "Operations Center") {
+                colorClass = "nav-operations";
+              } else if (label === "Active Alerts") {
+                colorClass = "nav-alerts";
+              } else if (label === "Predictive Intel") {
+                colorClass = "nav-predictive";
+              }
+
               return (
 
                 <button
 
                   key={href}
 
-                  className={`sb-nav-item${active ? " active" : ""}`}
+                  className={`sb-nav-item${active ? " active" : ""} ${colorClass}`}
 
                   onClick={() => router.push(href)}
 

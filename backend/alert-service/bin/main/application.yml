@@ -1,240 +1,484 @@
 server:
 
+
+
   port: 8081
+
+
+
+
 
 
 
 spring:
 
+
+
   application:
+
+
 
     name: alert-service
 
+
+
   
+
+
 
   # Disable Spring Security auto-configuration for development
 
+
+
   autoconfigure:
+
+
 
     exclude:
 
+
+
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 
+
+
   
+
+
 
   # AI Engine Integration
 
+
+
   ai:
+
+
 
     engine:
 
+
+
       url: ${AI_ENGINE_URL:http://localhost:8000}
+
+
 
       timeout: 5000
 
+
+
   
+
+
 
   # Kafka disabled for local development
 
+
+
   # kafka:
+
+
 
   #   bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
+
+
   #   consumer:
+
+
 
   #     group-id: alert-service
 
+
+
   #     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+
 
   #     value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
 
+
+
   #     properties:
+
+
 
   #       spring.json.type.mapping: intelligence_report:com.ntews.alert.model.IntelligenceReport,risk_forecast:com.ntews.alert.model.RiskForecast
 
+
+
   #     auto-offset-reset: latest
+
+
 
   #   listener:
 
+
+
   #     ack-mode: manual_immediate
 
+
+
   
+
+
 
   data:
 
+
+
     mongodb:
+
+
 
       uri: mongodb://localhost:27017/ntews_alerts
 
+
+
       auto-index-creation: true
+
+
 
     
 
+
+
     # Redis disabled for local development
+
+
 
     # redis:
 
+
+
     #   host: ${REDIS_HOST:localhost}
+
+
 
     #   port: ${REDIS_PORT:6379}
 
+
+
     #   timeout: 2000ms
+
+
 
     #   lettuce:
 
+
+
     #     pool:
+
+
 
     #       max-active: 8
 
+
+
     #       max-idle: 8
+
+
 
     #       min-idle: 0
 
+
+
   
+
+
 
   mail:
 
+
+
     host: ${SMTP_HOST:smtp.gmail.com}
+
+
 
     port: ${SMTP_PORT:587}
 
+
+
     username: ${SMTP_USERNAME:}
+
+
 
     password: ${SMTP_PASSWORD:}
 
+
+
     properties:
+
+
 
       mail:
 
+
+
         smtp:
+
+
 
           auth: true
 
+
+
           starttls:
+
+
 
             enable: true
 
-  
+
 
   
+
+
+
+  
+
+
 
 # Eureka disabled for local development
 
+
+
 # eureka:
+
+
 
 #   client:
 
+
+
 #     service-url:
+
+
 
 #       defaultZone: http://eureka-server:8761/eureka/
 
+
+
 #     register-with-eureka: true
+
+
 
 #     fetch-registry: true
 
 
 
+
+
+
+
 # WebSocket Configuration
 
+
+
 websocket:
+
+
 
   endpoint: /ws/alerts
 
 
 
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+
+
+
+
+
+
+
 # Alert Configuration
+
+
 
 alerts:
 
+
+
   thresholds:
+
+
 
     threat-score:
 
+
+
       critical: 0.8
+
+
 
       high: 0.6
 
+
+
       medium: 0.4
+
+
 
       low: 0.2
 
+
+
     
+
+
 
     forecast-confidence:
 
+
+
       minimum: 0.6
 
+
+
   
+
+
 
   notification:
 
+
+
     channels:
+
+
 
       - websocket
 
+
+
       - email
+
+
 
       - sms
 
+
+
     
+
+
 
     escalation:
 
+
+
       levels:
+
+
 
         - level_1: 5 minutes
 
+
+
         - level_2: 15 minutes
+
+
 
         - level_3: 30 minutes
 
+
+
         - level_4: 1 hour
+
+
 
   
 
+
+
   deduplication:
 
+
+
     window: 300000  # 5 minutes
+
+
 
     similarity-threshold: 0.8
 
 
 
+
+
+
+
 # Email Configuration
+
+
 
 email:
 
+
+
   from: ${EMAIL_FROM:alerts@ntews.gov}
+
+
 
   templates:
 
+
+
     threat-alert: templates/threat-alert.html
 
+
+
     forecast-alert: templates/forecast-alert.html
+
+
 
     escalation-alert: templates/escalation-alert.html
 
 
 
+
+
+
+
 # SMS Configuration (optional)
+
+
 
 sms:
 
+
+
   provider: ${SMS_PROVIDER:twilio}
+
+
 
   account-sid: ${TWILIO_ACCOUNT_SID:}
 
+
+
   auth-token: ${TWILIO_AUTH_TOKEN:}
+
+
 
   from-number: ${TWILIO_FROM_NUMBER:}
 
 
 
+
+
+
+
 logging:
+
+
 
   level:
 
+
+
     com.ntews.alert: DEBUG
 
+
+
     org.springframework.kafka: INFO
+
+
 

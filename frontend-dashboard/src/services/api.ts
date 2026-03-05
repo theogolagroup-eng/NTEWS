@@ -162,9 +162,17 @@ export class ApiClient {
         throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
       }
       
-      return await response.json();
-    } catch (error) {
-      console.error('API Request failed:', error);
+      // Handle empty responses (e.g., from DELETE requests)
+      const text = await response.text();
+      return text ? JSON.parse(text) : null;
+    } catch (error: any) {
+      // Don't log 404 errors for DELETE requests as these are expected for duplicate deletions
+      const isDeleteRequest = options.method === 'DELETE';
+      const is404Error = error?.message?.includes('404') || error?.message?.includes('Not Found');
+      
+      if (!(isDeleteRequest && is404Error)) {
+        console.error('API Request failed:', error);
+      }
       throw error;
     }
   }

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { API_ENDPOINTS, apiClient } from '@/services/api';
 import {
   LineChart,
   Line,
@@ -117,111 +118,146 @@ const ThreatIntelligenceDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data for demonstration
   useEffect(() => {
-    const mockAlerts: ThreatAlert[] = [
-      {
-        id: '1',
-        title: 'Suspicious Social Media Activity',
-        description: 'Coordinated posts detected across multiple platforms indicating potential protest organization',
-        severity: 'medium',
-        category: 'Social Unrest',
-        location: { name: 'Nairobi CBD', coordinates: [-1.2921, 36.8219] },
-        timestamp: '2024-02-21T10:30:00Z',
-        status: 'active',
-        confidence: 0.87,
-        aiAnalysis: 'ML models detect 87% probability of organized protest based on historical patterns',
-        source: 'AI Engine - Social Media Monitor'
-      },
-      {
-        id: '2',
-        title: 'Border Security Alert',
-        description: 'Increased movement detected near Kenya-Somalia border region',
-        severity: 'high',
-        category: 'Border Security',
-        location: { name: 'Mandera Border', coordinates: [3.9371, 41.8569] },
-        timestamp: '2024-02-21T09:15:00Z',
-        status: 'monitoring',
-        confidence: 0.92,
-        aiAnalysis: 'Pattern analysis suggests potential cross-border militant activity',
-        source: 'AI Engine - Border Monitor'
-      },
-      {
-        id: '3',
-        title: 'Cyber Attack Attempt',
-        description: 'Multiple failed login attempts detected on government systems',
-        severity: 'critical',
-        category: 'Cyber Security',
-        location: { name: 'Government Data Center', coordinates: [-1.2921, 36.8219] },
-        timestamp: '2024-02-21T08:45:00Z',
-        status: 'active',
-        confidence: 0.95,
-        aiAnalysis: 'Sophisticated attack pattern consistent with state-sponsored actors',
-        source: 'AI Engine - Cyber Monitor'
-      }
-    ];
+    fetchDashboardData();
+  }, []);
 
-    const mockIntelligence: IntelligenceReport[] = [
-      {
-        id: '1',
-        title: 'Regional Security Assessment',
-        threatLevel: 'high',
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      // Fetch data using the same pattern as AlertsPage
+      const [intelData, alertData, predictionData, allAlerts] = await Promise.all([
+        Promise.race([apiClient.get(API_ENDPOINTS.INTELLIGENCE.DASHBOARD), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.DASHBOARD), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.PREDICTIONS.DASHBOARD), timeoutPromise]),
+        Promise.race([apiClient.get(API_ENDPOINTS.ALERTS.ALL), timeoutPromise])
+      ]);
+
+      // Process alerts data - same successful pattern as AlertsPage
+      const alertsList = allAlerts?.content || [];
+      const processedAlerts: ThreatAlert[] = alertsList.slice(0, 10).map((alert: any) => ({
+        id: alert.id,
+        title: alert.title,
+        description: alert.description,
+        severity: alert.severity,
+        category: alert.category,
+        location: { 
+          name: alert.location?.address || alert.location?.city || 'Unknown Location',
+          coordinates: [
+            parseFloat(alert.location?.latitude || '-1.2921'),
+            parseFloat(alert.location?.longitude || '36.8219')
+          ]
+        },
+        timestamp: alert.createdAt || alert.timestamp,
+        status: alert.status,
+        confidence: alert.confidence || 0.8,
+        aiAnalysis: alert.aiAnalysis?.explanation,
+        source: 'AI Engine - Threat Monitor'
+      }));
+
+      // Process intelligence data
+      const processedIntelligence: IntelligenceReport[] = (intelData?.recentThreats || []).slice(0, 5).map((threat: any) => ({
+        id: threat.id,
+        title: threat.title,
+        threatLevel: threat.threatLevel === 'critical' ? 'critical' : 
+                   threat.threatLevel === 'high' ? 'high' : 
+                   threat.threatLevel === 'medium' ? 'medium' : 'low',
         category: 'Strategic Analysis',
-        summary: 'Comprehensive analysis of regional security threats indicates elevated risk levels',
+        summary: `${threat.title} - ${threat.location}`,
         sources: [
-          { name: 'Regional Intelligence Network', reliability: 0.92, type: 'HUMINT' },
-          { name: 'Satellite Imagery Analysis', reliability: 0.88, type: 'IMINT' },
-          { name: 'Signals Intelligence', reliability: 0.95, type: 'SIGINT' }
+          { name: 'AI Engine', reliability: 0.92, type: 'SIGINT' },
+          { name: 'Threat Analysis', reliability: 0.88, type: 'OSINT' }
         ],
-        timestamp: '2024-02-21T07:00:00Z',
+        timestamp: threat.timestamp,
         status: 'published',
         verified: true,
         aiConfidence: 0.91,
         recommendations: [
-          'Increase border patrol presence',
-          'Enhance cyber security protocols',
-          'Coordinate with regional partners'
+          'Increase monitoring coverage',
+          'Enhance defensive posture',
+          'Coordinate with response teams'
         ]
-      }
-    ];
+      }));
 
-    const mockPredictions: PredictionData[] = [
-      {
-        id: '1',
-        forecastType: 'Social Unrest',
-        riskLevel: 0.78,
+      // Process prediction data
+      const processedPredictions: PredictionData[] = (predictionData?.topHotspots || []).slice(0, 3).map((hotspot: any) => ({
+        id: hotspot.id,
+        forecastType: hotspot.threatType || 'Threat Activity',
+        riskLevel: hotspot.probability || 0.5,
         confidence: 0.85,
         timeframe: '72 hours',
         locations: [
-          { name: 'Nairobi CBD', probability: 0.82, severity: 'medium' },
-          { name: 'Uhuru Park', probability: 0.75, severity: 'high' }
+          { 
+            name: hotspot.locationName || 'Unknown Area', 
+            probability: hotspot.probability || 0.5, 
+            severity: hotspot.severity || 'medium' 
+          }
         ],
         factors: [
-          { name: 'Social Media Activity', weight: 0.35, impact: 'high' },
-          { name: 'Historical Patterns', weight: 0.25, impact: 'medium' },
-          { name: 'Weather Conditions', weight: 0.15, impact: 'low' }
+          { name: 'Historical Patterns', weight: 0.35, impact: 'high' },
+          { name: 'Current Intelligence', weight: 0.45, impact: 'high' },
+          { name: 'Environmental Factors', weight: 0.20, impact: 'medium' }
         ],
-        timestamp: '2024-02-21T06:00:00Z'
-      }
-    ];
+        timestamp: new Date().toISOString()
+      }));
 
-    const mockMetrics: SystemMetrics = {
-      totalAlerts: 1247,
-      activeThreats: 23,
-      aiAccuracy: 0.89,
-      dataPoints: 18529,
-      systemHealth: 'operational',
-      lastUpdate: '2024-02-21T10:45:00Z'
-    };
+      // Set system metrics
+      const processedMetrics: SystemMetrics = {
+        totalAlerts: alertData?.totalAlerts || alertsList.length,
+        activeThreats: intelData?.activeThreats || 0,
+        aiAccuracy: 0.89,
+        dataPoints: 18529,
+        systemHealth: 'operational',
+        lastUpdate: new Date().toISOString()
+      };
 
-    setTimeout(() => {
+      setAlerts(processedAlerts);
+      setIntelligence(processedIntelligence);
+      setPredictions(processedPredictions);
+      setMetrics(processedMetrics);
+
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+      setError('Failed to load threat intelligence data');
+      
+      // Fallback to mock data if API fails
+      const mockAlerts: ThreatAlert[] = [
+        {
+          id: '1',
+          title: 'Suspicious Social Media Activity',
+          description: 'Coordinated posts detected across multiple platforms indicating potential protest organization',
+          severity: 'medium',
+          category: 'Social Unrest',
+          location: { name: 'Nairobi CBD', coordinates: [-1.2921, 36.8219] },
+          timestamp: '2024-02-21T10:30:00Z',
+          status: 'active',
+          confidence: 0.87,
+          aiAnalysis: 'ML models detect 87% probability of organized protest based on historical patterns',
+          source: 'AI Engine - Social Media Monitor'
+        }
+      ];
+
+      const mockMetrics: SystemMetrics = {
+        totalAlerts: 1247,
+        activeThreats: 23,
+        aiAccuracy: 0.89,
+        dataPoints: 18529,
+        systemHealth: 'operational',
+        lastUpdate: '2024-02-21T10:45:00Z'
+      };
+
       setAlerts(mockAlerts);
-      setIntelligence(mockIntelligence);
-      setPredictions(mockPredictions);
       setMetrics(mockMetrics);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {

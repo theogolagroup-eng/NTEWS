@@ -16,83 +16,109 @@
 
 :root {
 
-  /* Canvas — layered charcoal, not black */
+  /* Canvas — Kenyan flag black base */
 
-  --bg: #0d1117;
+  --bg: #000000;
 
-  --surface-1: #161b22;
+  --surface-0: #000000;
 
-  --surface-2: #21262d;
+  --surface-1: #1a1a1a;
 
-  --surface-3: #2d333b;
+  --surface-2: #2d2d2d;
 
-  --surface-4: #373e47;
+  --surface-3: #404040;
+
+  --surface-4: #555555;
 
 
 
   /* Borders */
 
-  --border: #30363d;
+  --border: #333333;
 
-  --border-muted: #21262d;
+  --border-muted: #2d2d2d;
 
-  --border-emphasis: #8b949e;
+  --border-emphasis: #ffffff;
 
+  --border-subtle: #333333;
 
+  --border-default: #555555;
 
-  /* Brand — Kenya green, professional saturation */
-
-  --green: #3fb950;
-
-  --green-dim: rgba(63, 185, 80, 0.1);
-
-  --green-border: rgba(63, 185, 80, 0.25);
+  --border-active: #ffffff;
 
 
 
-  /* Severity — clear, accessible */
+  /* Brand — Kenya green, official flag color */
 
-  --red: #f85149;
+  --green: #006600;
 
-  --red-dim: rgba(248, 81, 73, 0.12);
+  --green-dim: rgba(0, 102, 0, 0.15);
 
-  --red-border: rgba(248, 81, 73, 0.35);
-
-
-
-  --orange: #f0883e;
-
-  --orange-dim: rgba(240, 136, 62, 0.12);
-
-  --orange-border: rgba(240, 136, 62, 0.35);
+  --green-border: rgba(0, 102, 0, 0.3);
 
 
 
-  --yellow: #e3b341;
+  /* Severity — Kenyan flag red for danger */
 
-  --yellow-dim: rgba(227, 179, 65, 0.12);
+  --red: #cc0000;
 
-  --yellow-border: rgba(227, 179, 65, 0.35);
+  --red-dim: rgba(204, 0, 0, 0.15);
 
-
-
-  --blue: #388bfd;
-
-  --blue-dim: rgba(56, 139, 253, 0.12);
-
-  --blue-border: rgba(56, 139, 253, 0.35);
+  --red-border: rgba(204, 0, 0, 0.4);
 
 
 
-  /* Text — high contrast hierarchy */
+  --orange: #ff6600;
 
-  --text-1: #e6edf3; /* primary — near white */
+  --orange-dim: rgba(255, 102, 0, 0.15);
 
-  --text-2: #8b949e; /* secondary */
+  --orange-border: rgba(255, 102, 0, 0.4);
 
-  --text-3: #6e7681; /* muted/placeholder */
 
-  --text-4: #484f58; /* disabled */
+
+  --yellow: #ffcc00;
+
+  --yellow-dim: rgba(255, 204, 0, 0.15);
+
+  --yellow-border: rgba(255, 204, 0, 0.4);
+
+
+
+  --blue: #3366cc;
+
+  --blue-dim: rgba(51, 102, 204, 0.15);
+
+  --blue-border: rgba(51, 102, 204, 0.4);
+
+
+
+  /* Text — white hierarchy on black background */
+
+  --text-primary: #ffffff;
+
+  --text-1: #ffffff;
+
+  --text-2: #e0e0e0;
+
+  --text-3: #b0b0b0;
+
+  --text-4: #808080;
+
+  --text-secondary: #e0e0e0;
+
+  --text-muted: #b0b0b0;
+
+  --text-disabled: #808080;
+
+
+
+  /* Critical levels for security system */
+
+  --low: #006600;
+
+  --medium: #ff6600;
+
+  --critical: #cc0000;
 
 
 
@@ -126,11 +152,11 @@
 
   /* Shadows */
 
-  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.5);
 
-  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.7), 0 8px 24px rgba(0, 0, 0, 0.7);
 
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 16px 48px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.8), 0 16px 48px rgba(0, 0, 0, 0.8);
 
 
 
@@ -316,7 +342,12 @@ body {
 
   flex-shrink: 0;
 
-  background: var(--surface-1);
+  background: linear-gradient(to bottom, 
+    var(--green) 0%, 
+    var(--green) 40%, 
+    #000000 40%, 
+    #000000 100%
+  );
 
   border-right: 1px solid var(--border);
 
@@ -568,6 +599,124 @@ body {
 
 }
 
+/* Navigation item specific colors - Action Points Style */
+.sb-nav-item.nav-operations {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 2px solid #000000;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 8px;
+  margin: 4px 8px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.sb-nav-item.nav-alerts {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 2px solid #cc0000;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 8px;
+  margin: 4px 8px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(204, 0, 0, 0.3);
+}
+
+.sb-nav-item.nav-predictive {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 2px solid #006600;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-radius: 8px;
+  margin: 4px 8px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 102, 0, 0.3);
+}
+
+/* Ensure active states maintain the custom colors */
+.sb-nav-item.nav-operations.active {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 3px solid #000000;
+  color: #ffffff !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.sb-nav-item.nav-alerts.active {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 3px solid #cc0000;
+  color: #ffffff !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(204, 0, 0, 0.5);
+}
+
+.sb-nav-item.nav-predictive.active {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 3px solid #006600;
+  color: #ffffff !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 102, 0, 0.5);
+}
+
+/* Hover states for custom colors */
+.sb-nav-item.nav-operations:hover {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 3px solid #000000;
+  color: #ffffff !important;
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+
+.sb-nav-item.nav-alerts:hover {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 3px solid #cc0000;
+  color: #ffffff !important;
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(204, 0, 0, 0.6);
+}
+
+.sb-nav-item.nav-predictive:hover {
+  background: linear-gradient(135deg, #000000 25%, #cc0000 25%, #cc0000 50%, #006600 50%, #000000 75%);
+  border: 3px solid #006600;
+  color: #ffffff !important;
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 102, 0, 0.6);
+}
+
+/* Update default nav item styling to match */
+.sb-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 16px);
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  margin: 4px 8px;
+}
+
+/* Make icons white for Kenyan theme */
+.sb-nav-item .icon {
+  font-size: 14px;
+  min-width: 16px;
+  display: flex;
+  align-items: center;
+  color: #ffffff !important;
+}
+
 
 
 .sb-footer {
@@ -596,9 +745,9 @@ body {
 
   height: var(--topbar-h);
 
-  background: var(--surface-1);
+  background: #000000;
 
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #ffffff;
 
   display: flex;
 
@@ -782,6 +931,17 @@ body {
 
   overflow: hidden;
 
+  background: linear-gradient(135deg, 
+    #000000 0%, 
+    #000000 25%, 
+    #006600 25%, 
+    #006600 50%, 
+    #cc0000 50%, 
+    #cc0000 75%, 
+    #000000 75%, 
+    #000000 100%
+  );
+
 }
 
 
@@ -804,7 +964,7 @@ body {
 
   flex-shrink: 0;
 
-  border-top: 1px solid var(--border);
+  border-top: 1px solid #ffffff;
 
   padding: 6px 20px;
 
@@ -818,7 +978,9 @@ body {
 
   font-size: 10px;
 
-  color: var(--text-4);
+  background: #000000;
+
+  color: #ffffff;
 
   overflow: hidden;
 

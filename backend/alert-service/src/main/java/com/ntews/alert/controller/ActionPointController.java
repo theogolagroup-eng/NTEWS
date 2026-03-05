@@ -10,8 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.Optional;
 
 @RestController
@@ -52,9 +52,80 @@ public class ActionPointController {
     
     // Create Action Point
     @PostMapping
-    public ResponseEntity<ActionPoint> createActionPoint(@RequestBody ActionPoint actionPoint) {
+    public ResponseEntity<ActionPoint> createActionPoint(@RequestBody Map<String, Object> actionPointData) {
         try {
-            logger.info("REST request to create action point: {}", actionPoint.getTitle());
+            logger.info("REST request to create action point: {}", actionPointData.get("title"));
+            
+            // Create ActionPoint from Map to handle enum conversion manually
+            ActionPoint actionPoint = new ActionPoint();
+            
+            if (actionPointData.get("title") != null) {
+                actionPoint.setTitle((String) actionPointData.get("title"));
+            }
+            if (actionPointData.get("description") != null) {
+                actionPoint.setDescription((String) actionPointData.get("description"));
+            }
+            if (actionPointData.get("type") != null) {
+                try {
+                    String typeStr = (String) actionPointData.get("type");
+                    actionPoint.setType(ActionPoint.ActionType.fromValue(typeStr));
+                } catch (Exception e) {
+                    logger.warn("Invalid type: {}, using default", actionPointData.get("type"));
+                    actionPoint.setType(ActionPoint.ActionType.INVESTIGATE);
+                }
+            }
+            if (actionPointData.get("priority") != null) {
+                try {
+                    String priorityStr = (String) actionPointData.get("priority");
+                    actionPoint.setPriority(ActionPoint.Priority.fromValue(priorityStr));
+                } catch (Exception e) {
+                    logger.warn("Invalid priority: {}, using default", actionPointData.get("priority"));
+                    actionPoint.setPriority(ActionPoint.Priority.MEDIUM);
+                }
+            }
+            if (actionPointData.get("status") != null) {
+                try {
+                    String statusStr = (String) actionPointData.get("status");
+                    actionPoint.setStatus(ActionPoint.ActionStatus.fromValue(statusStr));
+                } catch (Exception e) {
+                    logger.warn("Invalid status: {}, using default", actionPointData.get("status"));
+                    actionPoint.setStatus(ActionPoint.ActionStatus.PENDING);
+                }
+            }
+            if (actionPointData.get("createdBy") != null) {
+                actionPoint.setCreatedBy((String) actionPointData.get("createdBy"));
+            }
+            if (actionPointData.get("dueDate") != null) {
+                // Handle ISO date string
+                String dueDateStr = (String) actionPointData.get("dueDate");
+                if (dueDateStr != null && !dueDateStr.isEmpty()) {
+                    try {
+                        // Parse ISO date string - this is a simplified parser
+                        actionPoint.setDueDate(LocalDateTime.parse(dueDateStr));
+                    } catch (Exception e) {
+                        logger.warn("Invalid dueDate format: {}, ignoring", dueDateStr);
+                    }
+                }
+            }
+            if (actionPointData.get("relatedAlertId") != null) {
+                actionPoint.setRelatedAlertId((String) actionPointData.get("relatedAlertId"));
+            }
+            if (actionPointData.get("relatedThreatId") != null) {
+                actionPoint.setRelatedThreatId((String) actionPointData.get("relatedThreatId"));
+            }
+            if (actionPointData.get("relatedHotspotId") != null) {
+                actionPoint.setRelatedHotspotId((String) actionPointData.get("relatedHotspotId"));
+            }
+            if (actionPointData.get("humanApprovalRequired") != null) {
+                actionPoint.setHumanApprovalRequired((Boolean) actionPointData.get("humanApprovalRequired"));
+            }
+            if (actionPointData.get("autoTriggered") != null) {
+                actionPoint.setAutoTriggered((Boolean) actionPointData.get("autoTriggered"));
+            }
+            if (actionPointData.get("actions") != null) {
+                // This would need more complex handling for now, set empty list
+                actionPoint.setActions(new ArrayList<>());
+            }
             
             ActionPoint created = actionPointService.createActionPoint(actionPoint);
             return ResponseEntity.ok(created);

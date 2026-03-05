@@ -20,51 +20,59 @@ import React, { createContext, useContext } from "react";
 
 const STYLES = {
 
-  background: "var(--surface-0)",
+  background: "#000000",
 
-  contentBackground: "var(--surface-0)",
+  contentBackground: "#000000",
 
-  sidebarBackground: "var(--surface-1)",
+  sidebarBackground: "#1a1a1a",
 
-  headerColor: "var(--surface-1)",
+  headerColor: "#1a1a1a",
 
-  textColor: "var(--text-primary)",
+  textColor: "#ffffff",
 
-  secondaryTextColor: "var(--text-secondary)",
+  secondaryTextColor: "#e0e0e0",
 
-  mutedTextColor: "var(--text-muted)",
+  mutedTextColor: "#b0b0b0",
 
-  cardBackground: "var(--surface-1)",
+  cardBackground: "#1a1a1a",
 
-  cardBorder: "1px solid var(--border-subtle)",
+  cardBorder: "1px solid #333333",
 
-  glassBackground: "var(--surface-2)",
+  glassBackground: "#2d2d2d",
 
-  headerBackground: "var(--surface-1)",
+  headerBackground: "#1a1a1a",
 
-  borderDim: "var(--border-subtle)",
+  borderDim: "#333333",
 
-  borderNormal: "var(--border-default)",
+  borderNormal: "#555555",
 
-  borderActive: "var(--border-active)",
+  borderActive: "#ffffff",
 
-  hoverBackground: "var(--surface-3)",
+  hoverBackground: "#2d2d2d",
 
-  dividerColor: "var(--border-subtle)",
+  dividerColor: "#333333",
 
   textShadow: "none",
 
-  placeholderBackground: "var(--surface-2)",
+  placeholderBackground: "#2d2d2d",
 
-  successColor: "var(--low)",
+  successColor: "#006600",
 
-  warningColor: "var(--medium)",
+  warningColor: "#ff6600",
 
-  errorColor: "var(--critical)",
+  errorColor: "#cc0000",
 
-  infoColor: "#3b82f6",
+  infoColor: "#3366cc",
 
-  sidebarTextColor: "var(--text-secondary)",
+  sidebarTextColor: "#e0e0e0",
+
+  kenyanBlack: "#000000",
+
+  kenyanRed: "#cc0000",
+
+  kenyanGreen: "#006600",
+
+  kenyanWhite: "#ffffff",
 
 } as const;
 

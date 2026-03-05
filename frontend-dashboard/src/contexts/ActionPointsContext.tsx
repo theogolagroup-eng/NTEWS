@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { message } from 'antd';
 import { API_ENDPOINTS, apiClient } from '@/services/api';
 
 // Action Point Types
@@ -89,6 +90,9 @@ interface ActionPointsContextType {
   getActionPointsByAssignee: (assignee: string) => ActionPoint[];
   getActionPointsByPriority: (priority: ActionPoint['priority']) => ActionPoint[];
   searchActionPoints: (query: string) => ActionPoint[];
+  
+  // Manual refresh
+  refreshActionPoints: () => Promise<void>;
 }
 
 const ActionPointsContext = createContext<ActionPointsContextType>({
@@ -112,6 +116,7 @@ const ActionPointsContext = createContext<ActionPointsContextType>({
   getActionPointsByAssignee: () => [],
   getActionPointsByPriority: () => [],
   searchActionPoints: () => [],
+  refreshActionPoints: async () => {},
 });
 
 // Mock Data for Development
@@ -195,36 +200,22 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load action points from backend on mount
+  // Load action points from backend on mount only
   useEffect(() => {
     fetchActionPoints();
-  }, []);
+  }, []); // Empty dependency array means run only once on mount
 
   const fetchActionPoints = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.get('/api/action-points');
-      console.log('Action points response:', response);
-      
-      // Handle different response structures
-      let actionPointsData = [];
-      if (Array.isArray(response)) {
-        actionPointsData = response;
-      } else if (response && Array.isArray(response.content)) {
-        actionPointsData = response.content;
-      } else if (response && Array.isArray(response.data)) {
-        actionPointsData = response.data;
-      } else if (response) {
-        actionPointsData = [response];
-      }
-      
-      console.log('Processed action points:', actionPointsData);
-      setActionPoints(actionPointsData);
+      const response = await apiClient.get(API_ENDPOINTS.ACTION_POINTS.ALL);
+      setActionPoints(response || []);
     } catch (err) {
       console.error('Failed to load action points:', err);
       setError('Failed to load action points');
+      // Don't re-throw to prevent continuous re-renders
     } finally {
       setLoading(false);
     }
@@ -235,9 +226,10 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.post('/api/action-points', actionPointData);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.CREATE, actionPointData);
       const newActionPoint = response;
       
+      // Add to local state immediately without refresh
       setActionPoints(prev => [...prev, newActionPoint]);
       
       // Auto-trigger workflow if applicable
@@ -257,7 +249,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.put(`/api/action-points/${id}`, updates);
+      const response = await apiClient.put(API_ENDPOINTS.ACTION_POINTS.UPDATE(id), updates);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -278,11 +270,66 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      await apiClient.delete(`/api/action-points/${id}`);
-      setActionPoints(prev => prev.filter(ap => ap.id !== id));
-    } catch (err) {
+      // Check if action point exists in local state before attempting delete
+      const actionPointExists = actionPoints.some(ap => ap.id === id);
+      if (!actionPointExists) {
+        console.log('Action point already deleted, skipping:', id);
+        message.info("Action point has already been deleted");
+        return;
+      }
+      
+      try {
+        const response = await apiClient.delete(API_ENDPOINTS.ACTION_POINTS.DELETE(id));
+        
+        if (response) {
+          // Remove from local state immediately
+          setActionPoints(prev => prev.filter(ap => ap.id !== id));
+          setError(null);
+          message.success("Action point deleted successfully");
+        } else {
+          setError('Failed to delete action point');
+          message.error("Failed to delete action point");
+        }
+      } catch (err: any) {
+        // If it's a 404, the action point was already deleted on the backend
+        // This can happen due to race conditions, so handle it gracefully
+        const errorMessage = err?.message || '';
+        const is404Error = errorMessage.includes('404') || 
+                         errorMessage.includes('Not Found') ||
+                         errorMessage.includes('404 Not Found') ||
+                         err?.status === 404 ||
+                         err?.response?.status === 404;
+        
+        if (is404Error) {
+          console.log('Action point already deleted on backend, removing from local state:', id);
+          setActionPoints(prev => prev.filter(ap => ap.id !== id));
+          message.info("Action point has already been deleted");
+          return; // Exit gracefully without re-throwing
+        }
+        
+        // Re-throw non-404 errors to be handled by outer catch
+        throw err;
+      }
+    } catch (err: any) {
+      // Catch any remaining errors that might have been re-thrown
+      const errorMessage = err?.message || '';
+      const is404Error = errorMessage.includes('404') || 
+                       errorMessage.includes('Not Found') ||
+                       errorMessage.includes('404 Not Found') ||
+                       err?.status === 404 ||
+                       err?.response?.status === 404;
+      
+      // If it's still a 404 error, handle it gracefully here too
+      if (is404Error) {
+        console.log('Final catch: Action point already deleted, removing from local state:', id);
+        setActionPoints(prev => prev.filter(ap => ap.id !== id));
+        message.info("Action point has already been deleted");
+        return; // Exit gracefully
+      }
+      
       setError('Failed to delete action point');
       console.error('Delete action point error:', err);
+      message.error("Failed to delete action point");
       throw err;
     } finally {
       setLoading(false);
@@ -293,7 +340,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       
-      const response = await apiClient.post(`/api/action-points/${id}/assign?assignedTo=${encodeURIComponent(assignedTo)}`, null);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.ASSIGN(id) + `?assignedTo=${encodeURIComponent(assignedTo)}`, null);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -315,7 +362,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = notes ? { notes } : {};
-      const response = await apiClient.post(`/api/action-points/${id}/complete`, requestBody);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.COMPLETE(id), requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -342,7 +389,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       // If the context is an alert, trigger actions for that alert
       if (context.relatedAlertId) {
-        await apiClient.post(`/api/action-points/alert/${context.relatedAlertId}/trigger`);
+        await apiClient.post(API_ENDPOINTS.ACTION_POINTS.TRIGGER_FOR_ALERT(context.relatedAlertId));
         await fetchActionPoints(); // Refresh action points
       }
     } catch (err) {
@@ -372,7 +419,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = notes ? { notes } : {};
-      const response = await apiClient.post(`/api/action-points/${id}/approve`, requestBody);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.APPROVE(id), requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -394,7 +441,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       const requestBody = { reason };
-      const response = await apiClient.post(`/api/action-points/${id}/reject`, requestBody);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.REJECT(id), requestBody);
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -435,10 +482,10 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       
       // Generate AI recommendation first
-      await apiClient.post(`/api/action-points/${actionPointId}/ai-recommendation`);
+      await apiClient.post(API_ENDPOINTS.ACTION_POINTS.AI_RECOMMENDATION(actionPointId));
       
       // Then apply it
-      const response = await apiClient.post(`/api/action-points/${actionPointId}/apply-ai-recommendation`);
+      const response = await apiClient.post(API_ENDPOINTS.ACTION_POINTS.APPLY_AI_RECOMMENDATION(actionPointId));
       const updatedActionPoint = response;
       
       setActionPoints(prev => 
@@ -496,6 +543,7 @@ export const ActionPointsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     getActionPointsByAssignee,
     getActionPointsByPriority,
     searchActionPoints,
+    refreshActionPoints: fetchActionPoints, // Add manual refresh function
   };
 
   return (

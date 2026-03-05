@@ -76,6 +76,8 @@ import type { ColumnsType } from 'antd/es/table';
 
 import { API_ENDPOINTS, apiClient } from '@/services/api';
 
+import { useTheme } from '@/contexts/ThemeContext';
+
 
 
 const { Search: SearchInput } = Input;
@@ -145,6 +147,8 @@ interface Alert {
 
 
 export default function AlertsPage() {
+
+  const { themeStyles } = useTheme();
 
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
@@ -442,13 +446,13 @@ export default function AlertsPage() {
 
     const colors = {
 
-      critical: 'red',
+      critical: themeStyles.kenyanRed,
 
-      high: 'orange',
+      high: themeStyles.warningColor,
 
-      medium: 'gold',
+      medium: themeStyles.kenyanGreen,
 
-      low: 'green'
+      low: themeStyles.successColor
 
     };
 
@@ -462,13 +466,13 @@ export default function AlertsPage() {
 
     const colors = {
 
-      active: 'red',
+      active: themeStyles.kenyanRed,
 
-      acknowledged: 'orange',
+      acknowledged: themeStyles.warningColor,
 
-      resolved: 'green',
+      resolved: themeStyles.kenyanGreen,
 
-      closed: 'default'
+      closed: themeStyles.mutedTextColor
 
     };
 
@@ -482,13 +486,13 @@ export default function AlertsPage() {
 
     const colors = {
 
-      urgent: 'red',
+      urgent: themeStyles.kenyanRed,
 
-      high: 'orange',
+      high: themeStyles.warningColor,
 
-      medium: 'gold',
+      medium: themeStyles.kenyanGreen,
 
-      low: 'green'
+      low: themeStyles.successColor
 
     };
 
@@ -512,13 +516,13 @@ export default function AlertsPage() {
 
         <Space>
 
-          <ExclamationCircleOutlined style={{ color: record.severity === 'critical' ? '#ff4d4f' : '#fa8c16' }} />
+          <ExclamationCircleOutlined style={{ color: record.severity === 'critical' ? themeStyles.kenyanRed : themeStyles.warningColor }} />
 
           <div>
 
             <div style={{ fontWeight: 'bold' }}>{text}</div>
 
-            <div style={{ fontSize: '12px', color: '#666' }}>{record.category}</div>
+            <div style={{ fontSize: '12px', color: themeStyles.secondaryTextColor }}>{record.category}</div>
 
           </div>
 
@@ -642,7 +646,7 @@ export default function AlertsPage() {
 
           size="small"
 
-          strokeColor={confidence > 0.8 ? '#52c41a' : confidence > 0.6 ? '#fa8c16' : '#ff4d4f'}
+          strokeColor={confidence > 0.8 ? themeStyles.kenyanGreen : confidence > 0.6 ? themeStyles.warningColor : themeStyles.kenyanRed}
 
         />
 
