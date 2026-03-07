@@ -1,43 +1,38 @@
 package com.ntews.alert.config;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
+import org.springframework.messaging.simp.config.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
-import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
-import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
-import com.ntews.alert.controller.AlertWebSocketHandler;
 
+/**
+ * Enhanced WebSocket Configuration for Real-time Security Monitoring
+ * Supports Sheng-aware security alerts with real-time bidirectional communication
+ */
 @Configuration
 @EnableWebSocketMessageBroker
-@EnableWebSocket
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSocketConfigurer {
+public class WebSocketConfig implements WebSocketConfigurer {
     
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic", "/queue");
+        // Enable simple broker for WebSocket messaging
+        config.enableSimpleBroker("/topic");
+        
+        // Set application destination prefix for client-to-server messages
         config.setApplicationDestinationPrefixes("/app");
     }
     
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/alerts")
+        // Register WebSocket endpoint for security monitoring
+        registry.addEndpoint("/security-monitor")
+                .setAllowedOriginPatterns("*") // Allow all origins for development
                 .withSockJS();
         
-        // Add additional endpoint for direct WebSocket connections
-        registry.addEndpoint("/ws/alerts-direct");
-    }
-    
-    @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(alertWebSocketHandler(), "/ws/alerts-direct");
-    }
-    
-    @Bean
-    public AlertWebSocketHandler alertWebSocketHandler() {
-        return new AlertWebSocketHandler();
+        // Additional endpoint for high-frequency security alerts
+        registry.addEndpoint("/security-alerts-stream")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 }

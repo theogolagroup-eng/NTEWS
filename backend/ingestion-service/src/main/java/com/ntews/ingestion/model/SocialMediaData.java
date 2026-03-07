@@ -48,6 +48,15 @@ public class SocialMediaData {
     
     // Sentiment analysis results (if pre-processed)
     private Double sentimentScore;
+    
+    // Sheng and security detection
+    private Boolean shengDetected;
+    private String securityRelevance;
+    private List<String> shengWordsDetected;
+    
+    // Additional fields for Twitter streaming
+    private String authorId;
+    private String riskCategory;
     private String sentimentLabel; // positive, negative, neutral
     
     // Threat indicators

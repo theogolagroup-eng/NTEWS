@@ -29,27 +29,27 @@ dependencies {
     // Spring Boot Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
+    // Spring Boot Data MongoDB
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+    
+    // For handling the JSON forwarding to your AI Engine
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    
+    // Standard JSON mapping
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    
+    // Lombok for cleaner code
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    
+    // Jakarta annotations for @PostConstruct (Spring Boot 3.x)
+    implementation 'jakarta.annotation:jakarta.annotation-api'
+    
     // Kafka
     implementation 'org.springframework.kafka:spring-kafka'
     
-    // Eureka Client
-    // implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-    
-    // MongoDB
-    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
-    
     // Redis for caching
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    
-    // Jackson for JSON processing
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    
-    // HTTP Client for external APIs
-    implementation 'org.springframework.boot:spring-boot-starter-webflux'
-    
-    // Lombok
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
     
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
