@@ -42,7 +42,9 @@ import {
 
   Tabs,
 
-  Progress
+  Progress,
+
+  message
 
 } from 'antd';
 
@@ -85,8 +87,6 @@ const { Search: SearchInput } = Input;
 const { Option } = Select;
 
 const { RangePicker } = DatePicker;
-
-const { TabPane } = Tabs;
 
 
 
@@ -159,6 +159,14 @@ export default function AlertsPage() {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+
+  const [assignee, setAssignee] = useState('');
+
+  const [resolutionNotes, setResolutionNotes] = useState('');
+
+  const [assignmentNotes, setAssignmentNotes] = useState('');
 
   const [filters, setFilters] = useState({
 
@@ -390,12 +398,18 @@ export default function AlertsPage() {
 
 
 
-  const handleViewDetails = (alert: Alert) => {
-
+  const handleViewDetails = async (alert: Alert) => {
     setSelectedAlert(alert);
-
+    
+    // Load existing resolution notes
+    try {
+      const existingNotes = await loadResolutionNotes(alert.id);
+      setResolutionNotes(existingNotes);
+    } catch (error) {
+      setResolutionNotes('');
+    }
+    
     setDetailModalVisible(true);
-
   };
 
 
@@ -421,22 +435,136 @@ export default function AlertsPage() {
 
 
   const handleResolve = async (alertId: string, notes: string) => {
-
     try {
-
       await apiClient.post(`${API_ENDPOINTS.ALERTS.UPDATE(alertId)}/resolve`, { resolutionNotes: notes });
+      fetchAlerts();
+      fetchStatistics();
+      setDetailModalVisible(false);
+    } catch (error) {
+      console.error('Failed to resolve alert:', error);
+    }
+  };
+
+
+  const handleAssign = async () => {
+    try {
+      if (!selectedAlert || !assignee.trim()) {
+        return;
+      }
+
+      await apiClient.post(API_ENDPOINTS.ALERTS.ASSIGN(selectedAlert.id), { 
+        assignedTo: assignee.trim()
+      });
+
+      // Save assignment notes if provided
+      if (resolutionNotes.trim()) {
+        await apiClient.post(API_ENDPOINTS.ALERTS.SAVE_ASSIGNMENT_NOTES(selectedAlert.id), {
+          notes: resolutionNotes.trim(),
+          assignedTo: assignee.trim(),
+          timestamp: new Date().toISOString()
+        });
+      }
 
       fetchAlerts();
-
       fetchStatistics();
 
+      setAssignModalVisible(false);
+      setAssignee('');
+      setResolutionNotes('');
       setDetailModalVisible(false);
 
     } catch (error) {
-
-      console.error('Failed to resolve alert:', error);
-
+      console.error('Failed to assign alert:', error);
     }
+  };
+
+  // Notes Management Functions
+  const handleSaveAssignmentNotes = async () => {
+    try {
+      if (!selectedAlert || !assignmentNotes.trim()) {
+        return;
+      }
+
+      await apiClient.post(API_ENDPOINTS.ALERTS.SAVE_ASSIGNMENT_NOTES(selectedAlert.id), {
+        notes: assignmentNotes.trim(),
+        timestamp: new Date().toISOString(),
+        lastModified: new Date().toISOString()
+      });
+
+      // Show success feedback
+      message.success('Assignment notes saved successfully');
+      // Notes remain in the input field after successful save
+
+    } catch (error) {
+      console.error('Failed to save assignment notes:', error);
+    }
+  };
+
+  const handleSaveResolutionNotes = async () => {
+    try {
+      if (!selectedAlert || !resolutionNotes.trim()) {
+        return;
+      }
+
+      await apiClient.post(API_ENDPOINTS.ALERTS.SAVE_RESOLUTION_NOTES(selectedAlert.id), {
+        notes: resolutionNotes.trim(),
+        timestamp: new Date().toISOString(),
+        lastModified: new Date().toISOString()
+      });
+
+      // Show success feedback
+      message.success('Resolution notes saved successfully');
+      
+    } catch (error) {
+      // Don't log error for 404 - it just means no notes exist yet
+      if ((error as any).response?.status !== 404) {
+        console.error('Failed to save resolution notes:', error);
+      }
+    }
+  };
+
+  const loadAssignmentNotes = async (alertId: string) => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.ALERTS.ASSIGNMENT_NOTES(alertId));
+      return response.data?.notes || '';
+    } catch (error) {
+      // Don't log error for 404 - it just means no notes exist yet
+      if ((error as any).response?.status !== 404) {
+        console.error('Failed to load assignment notes:', error);
+      }
+      return '';
+    }
+  };
+
+  const loadResolutionNotes = async (alertId: string) => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.ALERTS.RESOLUTION_NOTES(alertId));
+      return response.data?.notes || '';
+    } catch (error) {
+      // Don't log error for 404 - it just means no notes exist yet
+      if ((error as any).response?.status !== 404) {
+        console.error('Failed to load resolution notes:', error);
+      }
+      return '';
+    }
+  };
+
+
+  const showAssignModal = async (alert: Alert) => {
+
+    setSelectedAlert(alert);
+
+    setAssignee(alert.assignedTo || '');
+
+    // Load existing assignment notes
+    try {
+      const existingNotes = await loadAssignmentNotes(alert.id);
+      setAssignmentNotes(existingNotes);
+    } catch (error) {
+      setAssignmentNotes('');
+    }
+
+    setAssignModalVisible(true);
 
   };
 
@@ -678,6 +806,28 @@ export default function AlertsPage() {
 
     {
 
+      title: 'Assigned To',
+
+      dataIndex: 'assignedTo',
+
+      key: 'assignedTo',
+
+      render: (assignedTo: string) => (
+
+        <Space>
+
+          <UserOutlined />
+
+          <span>{assignedTo || <span style={{ color: '#999' }}>Unassigned</span>}</span>
+
+        </Space>
+
+      ),
+
+    },
+
+    {
+
       title: 'Actions',
 
       key: 'actions',
@@ -689,6 +839,22 @@ export default function AlertsPage() {
           <Button size="small" icon={<EyeOutlined />} onClick={() => handleViewDetails(record)}>
 
             View
+
+          </Button>
+
+          <Button 
+
+            size="small" 
+
+            type="primary" 
+
+            icon={<UserOutlined />}
+
+            onClick={() => showAssignModal(record)}
+
+          >
+
+            Assign
 
           </Button>
 
@@ -706,7 +872,7 @@ export default function AlertsPage() {
 
             >
 
-              Acknowledge
+              Ack
 
             </Button>
 
@@ -718,589 +884,288 @@ export default function AlertsPage() {
 
     },
 
-  ];
+];
 
 
 
-  const filteredAlerts = alerts.filter(alert => {
+const filteredAlerts = alerts.filter(alert => {
+  if (filters.severity && alert.severity !== filters.severity) return false;
+  if (filters.status && alert.status !== filters.status) return false;
+  if (filters.search && !alert.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
+  return true;
+});
 
-    if (filters.severity && alert.severity !== filters.severity) return false;
-
-    if (filters.status && alert.status !== filters.status) return false;
-
-    if (filters.category && alert.category !== filters.category) return false;
-
-    if (filters.search && !alert.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
-
-    return true;
-
-  });
-
-
-
-  return (
-
-    <div style={{ padding: '24px' }}>
-
-      <div style={{ marginBottom: '24px' }}>
-
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
-
-          Alert Management
-
-        </h1>
-
-        <p style={{ color: '#666', marginTop: '8px' }}>
-
-          Monitor and manage security alerts with intelligent analysis
-
-        </p>
-
+return (
+  <div style={{ backgroundColor: themeStyles.kenyanBlack, minHeight: '100vh', padding: '20px' }}>
+    {/* Header Banner */}
+    <div style={{
+      backgroundColor: '#000000',
+      color: themeStyles.kenyanWhite,
+      padding: '20px',
+      marginBottom: '20px',
+      borderRadius: '8px',
+      border: `2px solid ${themeStyles.kenyanRed}`,
+      textAlign: 'center',
+      fontWeight: 'bold',
+      fontSize: '24px',
+      textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px' }}>
+        <div style={{ width: '40px', height: '40px', backgroundColor: themeStyles.kenyanBlack, border: '1px solid #fff' }}></div>
+        <div style={{ width: '40px', height: '40px', backgroundColor: themeStyles.kenyanRed, border: '1px solid #fff' }}></div>
+        <div style={{ width: '40px', height: '40px', backgroundColor: themeStyles.kenyanGreen, border: '1px solid #fff' }}></div>
+        <span>NTEWS SECURITY ALERTS MONITOR</span>
+        <div style={{ width: '40px', height: '40px', backgroundColor: themeStyles.kenyanGreen, border: '1px solid #fff' }}></div>
+        <div style={{ width: '40px', height: '40px', backgroundColor: themeStyles.kenyanRed, border: '1px solid #fff' }}></div>
+        <div style={{ width: '40px', height: '40px', backgroundColor: themeStyles.kenyanBlack, border: '1px solid #fff' }}></div>
       </div>
-
-
-
-      {/* Statistics Cards */}
-
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-
-        <Col xs={24} sm={6}>
-
-          <Card>
-
-            <Statistic
-
-              title="Total Alerts"
-
-              value={statistics.total}
-
-              prefix={<ExclamationCircleOutlined />}
-
-              valueStyle={{ color: '#1890ff' }}
-
-            />
-
-          </Card>
-
-        </Col>
-
-        <Col xs={24} sm={6}>
-
-          <Card>
-
-            <Statistic
-
-              title="Active Alerts"
-
-              value={statistics.active}
-
-              prefix={<ExclamationCircleOutlined />}
-
-              valueStyle={{ color: '#ff4d4f' }}
-
-            />
-
-          </Card>
-
-        </Col>
-
-        <Col xs={24} sm={6}>
-
-          <Card>
-
-            <Statistic
-
-              title="Critical Alerts"
-
-              value={statistics.critical}
-
-              prefix={<FireOutlined />}
-
-              valueStyle={{ color: '#ff7a45' }}
-
-            />
-
-          </Card>
-
-        </Col>
-
-        <Col xs={24} sm={6}>
-
-          <Card>
-
-            <Statistic
-
-              title="Unacknowledged"
-
-              value={statistics.unacknowledged}
-
-              prefix={<ClockCircleOutlined />}
-
-              valueStyle={{ color: '#fa8c16' }}
-
-            />
-
-          </Card>
-
-        </Col>
-
-      </Row>
-
-
-
-      {/* Filters */}
-
-      <Card style={{ marginBottom: '24px' }}>
-
-        <Row gutter={[16, 16]} align="middle">
-
-          <Col xs={24} sm={8}>
-
-            <SearchInput
-
-              placeholder="Search alerts..."
-
-              prefix={<SearchOutlined />}
-
-              value={filters.search}
-
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-
-              allowClear
-
-            />
-
-          </Col>
-
-          <Col xs={24} sm={4}>
-
-            <Select
-
-              placeholder="Severity"
-
-              value={filters.severity}
-
-              onChange={(value) => setFilters({ ...filters, severity: value })}
-
-              style={{ width: '100%' }}
-
-              allowClear
-
-            >
-
-              <Option value="critical">Critical</Option>
-
-              <Option value="high">High</Option>
-
-              <Option value="medium">Medium</Option>
-
-              <Option value="low">Low</Option>
-
-            </Select>
-
-          </Col>
-
-          <Col xs={24} sm={4}>
-
-            <Select
-
-              placeholder="Status"
-
-              value={filters.status}
-
-              onChange={(value) => setFilters({ ...filters, status: value })}
-
-              style={{ width: '100%' }}
-
-              allowClear
-
-            >
-
-              <Option value="active">Active</Option>
-
-              <Option value="acknowledged">Acknowledged</Option>
-
-              <Option value="resolved">Resolved</Option>
-
-              <Option value="closed">Closed</Option>
-
-            </Select>
-
-          </Col>
-
-          <Col xs={24} sm={4}>
-
-            <Select
-
-              placeholder="Category"
-
-              value={filters.category}
-
-              onChange={(value) => setFilters({ ...filters, category: value })}
-
-              style={{ width: '100%' }}
-
-              allowClear
-
-            >
-
-              <Option value="social_unrest">Social Unrest</Option>
-
-              <Option value="cyber">Cyber</Option>
-
-              <Option value="criminal">Criminal</Option>
-
-              <Option value="terror">Terror</Option>
-
-            </Select>
-
-          </Col>
-
-          <Col xs={24} sm={4}>
-
-            <Button icon={<FilterOutlined />} onClick={() => setFilters({ severity: '', status: '', category: '', search: '', dateRange: null })}>
-
-              Clear Filters
-
-            </Button>
-
-          </Col>
-
-        </Row>
-
-      </Card>
-
-
-
-      {/* Alerts Table */}
-
-      <Card>
-
-        <Table
-
-          columns={columns}
-
-          dataSource={filteredAlerts}
-
-          rowKey="id"
-
-          loading={loading}
-
-          pagination={{
-
-            total: filteredAlerts.length,
-
-            pageSize: 10,
-
-            showSizeChanger: true,
-
-            showQuickJumper: true,
-
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} alerts`,
-
-          }}
-
-          scroll={{ x: 1200 }}
-
-        />
-
-      </Card>
-
-
-
-      {/* Alert Detail Modal */}
-
-      <Modal
-
-        title={
-
-          <Space>
-
-            <ExclamationCircleOutlined style={{ color: selectedAlert?.severity === 'critical' ? '#ff4d4f' : '#fa8c16' }} />
-
-            <span>{selectedAlert?.title}</span>
-
-          </Space>
-
-        }
-
-        open={detailModalVisible}
-
-        onCancel={() => setDetailModalVisible(false)}
-
-        footer={[
-
-          <Button key="close" onClick={() => setDetailModalVisible(false)}>
-
-            Close
-
-          </Button>,
-
-          selectedAlert?.status === 'active' && (
-
-            <Button 
-
-              key="acknowledge" 
-
-              type="primary" 
-
-              icon={<CheckCircleOutlined />}
-
-              onClick={() => selectedAlert && handleAcknowledge(selectedAlert.id)}
-
-            >
-
-              Acknowledge
-
-            </Button>
-
-          ),
-
-          selectedAlert?.status !== 'resolved' && (
-
-            <Button 
-
-              key="resolve" 
-
-              type="primary" 
-
-              danger
-
-              icon={<CloseCircleOutlined />}
-
-              onClick={() => {
-
-                Modal.confirm({
-
-                  title: 'Resolve Alert',
-
-                  content: 'Please provide resolution notes:',
-
-                  okText: 'Resolve',
-
-                  cancelText: 'Cancel',
-
-                  onOk: () => {
-
-                    // In a real implementation, you'd show an input field for notes
-
-                    selectedAlert && handleResolve(selectedAlert.id, 'Resolved by analyst');
-
-                  }
-
-                });
-
-              }}
-
-            >
-
-              Resolve
-
-            </Button>
-
-          ),
-
-        ]}
-
-        width={800}
-
-      >
-
-        {selectedAlert && (
-
-          <Tabs defaultActiveKey="details">
-
-            <TabPane tab="Alert Details" key="details">
-
-              <Descriptions bordered column={2}>
-
-                <Descriptions.Item label="Severity">
-
-                  <Tag color={getSeverityColor(selectedAlert.severity)}>
-
-                    {selectedAlert.severity?.toUpperCase() || 'UNKNOWN'}
-
-                  </Tag>
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Status">
-
-                  <Tag color={getStatusColor(selectedAlert.status)}>
-
-                    {selectedAlert.status?.toUpperCase() || 'UNKNOWN'}
-
-                  </Tag>
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Priority">
-
-                  <Tag color={getPriorityColor(selectedAlert.priority)}>
-
-                    {selectedAlert.priority?.toUpperCase() || 'UNKNOWN'}
-
-                  </Tag>
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Category">
-
-                  {selectedAlert.category}
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Location" span={2}>
-
-                  <Space>
-
-                    <EnvironmentOutlined />
-
-                    {selectedAlert.location.address}
-
-                  </Space>
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Confidence">
-
-                  <Progress
-
-                    percent={Math.round(selectedAlert.confidence * 100)}
-
-                    size="small"
-
-                    strokeColor={selectedAlert.confidence > 0.8 ? '#52c41a' : '#fa8c16'}
-
-                  />
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Threat Level">
-
-                  {selectedAlert.threatLevel}
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Timestamp" span={2}>
-
-                  <Space>
-
-                    <ClockCircleOutlined />
-
-                    {new Date(selectedAlert.timestamp).toLocaleString()}
-
-                  </Space>
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Assigned To">
-
-                  {selectedAlert.assignedTo || <span style={{ color: '#999' }}>Unassigned</span>}
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Acknowledged At">
-
-                  {selectedAlert.acknowledgedAt ? 
-
-                    new Date(selectedAlert.acknowledgedAt).toLocaleString() : 
-
-                    <span style={{ color: '#999' }}>Not acknowledged</span>
-
-                  }
-
-                </Descriptions.Item>
-
-                <Descriptions.Item label="Description" span={2}>
-
-                  {selectedAlert.description}
-
-                </Descriptions.Item>
-
-                {selectedAlert.resolutionNotes && (
-
-                  <Descriptions.Item label="Resolution Notes" span={2}>
-
-                    {selectedAlert.resolutionNotes}
-
-                  </Descriptions.Item>
-
-                )}
-
-              </Descriptions>
-
-            </TabPane>
-
-            
-
-            {selectedAlert.aiAnalysis && (
-
-              <TabPane tab="Analysis" key="ai">
-
-                <Alert
-
-                  message="Threat Analysis"
-
-                  description={selectedAlert.aiAnalysis.explanation}
-
-                  type="info"
-
-                  showIcon
-
-                  style={{ marginBottom: '16px' }}
-
-                />
-
-                
-
-                <Card title="Key Risk Factors" size="small" style={{ marginBottom: '16px' }}>
-
-                  <Space wrap>
-
-                    {selectedAlert.aiAnalysis.keyFactors.map((factor, index) => (
-
-                      <Tag key={index} color="blue">{factor}</Tag>
-
-                    ))}
-
-                  </Space>
-
-                </Card>
-
-                
-
-                <Card title="Recommended Actions" size="small">
-
-                  <Timeline>
-
-                    {selectedAlert.aiAnalysis.recommendedActions.map((action, index) => (
-
-                      <Timeline.Item key={index} color="blue">
-
-                        {action}
-
-                      </Timeline.Item>
-
-                    ))}
-
-                  </Timeline>
-
-                </Card>
-
-              </TabPane>
-
-            )}
-
-          </Tabs>
-
-        )}
-
-      </Modal>
-
     </div>
 
-  );
+    {/* Alert Statistics Banner */}
+    <div style={{
+      backgroundColor: '#000000',
+      color: themeStyles.kenyanWhite,
+      padding: '15px',
+      marginBottom: '20px',
+      borderRadius: '8px',
+      border: `1px solid ${themeStyles.kenyanGreen}`,
+      overflowX: 'auto'
+    }}>
+      <div style={{ display: 'flex', gap: '30px', minWidth: '600px' }}>
+        <div>
+          <span style={{ color: themeStyles.kenyanRed, fontWeight: 'bold' }}>Total Alerts: </span>
+          <span>{statistics.total}</span>
+        </div>
+        <div>
+          <span style={{ color: themeStyles.kenyanRed, fontWeight: 'bold' }}>Active: </span>
+          <span>{statistics.active}</span>
+        </div>
+        <div>
+          <span style={{ color: themeStyles.kenyanRed, fontWeight: 'bold' }}>Critical: </span>
+          <span>{statistics.critical}</span>
+        </div>
+        <div>
+          <span style={{ color: themeStyles.kenyanRed, fontWeight: 'bold' }}>Unacknowledged: </span>
+          <span>{statistics.unacknowledged}</span>
+        </div>
+      </div>
+    </div>
 
+    {/* Main Table Container with Horizontal Scrolling */}
+    <div style={{
+      backgroundColor: '#000000',
+      padding: '20px',
+      borderRadius: '8px',
+      border: `2px solid ${themeStyles.kenyanGreen}`,
+      overflowX: 'auto'
+    }}>
+      <div style={{ minWidth: '1200px' }}>
+        <Table
+          columns={columns}
+          dataSource={filteredAlerts}
+          rowKey="id"
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} alerts`,
+          }}
+          style={{
+            backgroundColor: themeStyles.kenyanBlack,
+            color: themeStyles.kenyanWhite
+          }}
+        />
+      </div>
+    </div>
+
+    {/* Alert Details Modal */}
+    <Modal
+      title={
+        <div style={{ color: themeStyles.kenyanWhite, textAlign: 'center' }}>
+          <span style={{ color: themeStyles.kenyanRed }}>●</span> ALERT DETAILS <span style={{ color: themeStyles.kenyanRed }}>●</span>
+        </div>
+      }
+      open={detailModalVisible}
+      onCancel={() => setDetailModalVisible(false)}
+      footer={[
+        <Button key="close" onClick={() => setDetailModalVisible(false)}>
+          Close
+        </Button>,
+        <Button 
+          key="resolve" 
+          type="primary" 
+          style={{ backgroundColor: themeStyles.kenyanGreen, borderColor: themeStyles.kenyanGreen }}
+          onClick={() => {
+            if (selectedAlert) {
+              handleResolve(selectedAlert.id, resolutionNotes);
+            }
+          }}
+        >
+          Resolve
+        </Button>
+      ]}
+      width={800}
+      style={{
+        backgroundColor: themeStyles.kenyanBlack,
+        color: themeStyles.kenyanWhite
+      }}
+    >
+      {selectedAlert && (
+        <div style={{ color: themeStyles.kenyanWhite }}>
+          <Descriptions column={2} bordered>
+            <Descriptions.Item label="Alert ID">{selectedAlert.id}</Descriptions.Item>
+            <Descriptions.Item label="Severity">
+              <Tag color={getSeverityColor(selectedAlert.severity)}>
+                {selectedAlert.severity?.toUpperCase()}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Status">
+              <Tag color={getStatusColor(selectedAlert.status)}>
+                {selectedAlert.status?.toUpperCase()}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Priority">
+              <Tag color={getPriorityColor(selectedAlert.priority)}>
+                {selectedAlert.priority?.toUpperCase()}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Title" span={2}>{selectedAlert.title}</Descriptions.Item>
+            <Descriptions.Item label="Description" span={2}>{selectedAlert.description}</Descriptions.Item>
+            <Descriptions.Item label="Location" span={2}>
+              {selectedAlert.location?.address}
+            </Descriptions.Item>
+            <Descriptions.Item label="Confidence">
+              <Progress
+                percent={Math.round((selectedAlert.confidence || 0) * 100)}
+                size="small"
+                strokeColor={(selectedAlert.confidence || 0) > 0.8 ? themeStyles.kenyanGreen : (selectedAlert.confidence || 0) > 0.6 ? themeStyles.warningColor : themeStyles.kenyanRed}
+              />
+            </Descriptions.Item>
+            <Descriptions.Item label="Time">
+              {new Date(selectedAlert.timestamp).toLocaleString()}
+            </Descriptions.Item>
+            <Descriptions.Item label="Assigned To">
+              {selectedAlert.assignedTo || <span style={{ color: '#999' }}>Unassigned</span>}
+            </Descriptions.Item>
+            <Descriptions.Item label="Resolution Notes" span={2}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <Input.TextArea
+                  value={resolutionNotes}
+                  onChange={(e) => setResolutionNotes(e.target.value)}
+                  placeholder="Enter resolution notes..."
+                  rows={3}
+                  style={{ backgroundColor: themeStyles.cardBackground, color: themeStyles.textColor }}
+                />
+                <Button
+                  size="small"
+                  style={{ 
+                    backgroundColor: themeStyles.kenyanGreen, 
+                    borderColor: themeStyles.kenyanGreen,
+                    color: themeStyles.kenyanWhite,
+                    alignSelf: 'flex-end'
+                  }}
+                  onClick={handleSaveResolutionNotes}
+                  disabled={!resolutionNotes.trim()}
+                >
+                  Save Notes
+                </Button>
+              </div>
+            </Descriptions.Item>
+          </Descriptions>
+        </div>
+      )}
+    </Modal>
+
+    {/* Assign Modal */}
+    <Modal
+      title={
+        <div style={{ color: themeStyles.kenyanWhite, textAlign: 'center' }}>
+          <span style={{ color: themeStyles.kenyanRed }}>●</span> ASSIGN ALERT <span style={{ color: themeStyles.kenyanRed }}>●</span>
+        </div>
+      }
+      open={assignModalVisible}
+      onCancel={() => {
+        setAssignModalVisible(false);
+        setAssignee('');
+        setResolutionNotes('');
+      }}
+      footer={[
+        <Button key="cancel" onClick={() => {
+          setAssignModalVisible(false);
+          setAssignee('');
+          setResolutionNotes('');
+        }}>
+          Cancel
+        </Button>,
+        <Button 
+          key="assign" 
+          type="primary" 
+          style={{ backgroundColor: themeStyles.kenyanGreen, borderColor: themeStyles.kenyanGreen }}
+          onClick={handleAssign}
+          disabled={!assignee.trim()}
+        >
+          Assign Alert
+        </Button>
+      ]}
+      style={{
+        backgroundColor: themeStyles.kenyanBlack,
+        color: themeStyles.kenyanWhite
+      }}
+    >
+      {selectedAlert && (
+        <div style={{ color: themeStyles.kenyanWhite }}>
+          <Descriptions column={1} bordered>
+            <Descriptions.Item label="Alert ID">{selectedAlert.id}</Descriptions.Item>
+            <Descriptions.Item label="Title">{selectedAlert.title}</Descriptions.Item>
+            <Descriptions.Item label="Severity">
+              <Tag color={getSeverityColor(selectedAlert.severity)}>
+                {selectedAlert.severity?.toUpperCase()}
+              </Tag>
+            </Descriptions.Item>
+          </Descriptions>
+          
+          <div style={{ marginTop: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: themeStyles.kenyanWhite }}>
+              Assign To:
+            </label>
+            <Input
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              placeholder="Enter assignee name or ID..."
+              style={{ backgroundColor: themeStyles.cardBackground, color: themeStyles.textColor }}
+            />
+          </div>
+          
+          <div style={{ marginTop: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: themeStyles.kenyanWhite }}>
+              Notes:
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <Input.TextArea
+                value={resolutionNotes}
+                onChange={(e) => setResolutionNotes(e.target.value)}
+                placeholder="Enter assignment notes..."
+                rows={3}
+                style={{ backgroundColor: themeStyles.cardBackground, color: themeStyles.textColor }}
+              />
+              <Button
+                size="small"
+                style={{ 
+                  backgroundColor: themeStyles.kenyanGreen, 
+                  borderColor: themeStyles.kenyanGreen,
+                  color: themeStyles.kenyanWhite,
+                  alignSelf: 'flex-end'
+                }}
+                onClick={handleSaveAssignmentNotes}
+                disabled={!resolutionNotes.trim()}
+              >
+                Save Notes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  </div>
+);
 }
-

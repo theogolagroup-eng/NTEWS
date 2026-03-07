@@ -1,7 +1,10 @@
 package com.ntews.alert.controller;
 
 import com.ntews.alert.model.Alert;
+import com.ntews.alert.model.AlertNotes;
+import com.ntews.alert.model.AlertNotes.NotesType;
 import com.ntews.alert.service.AlertService;
+import com.ntews.alert.service.AlertNotesService;
 import com.ntews.alert.service.NLPAnalysisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,7 @@ import java.util.UUID;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/alerts")
@@ -27,6 +31,7 @@ public class AlertController {
     
     private final AlertService alertService;
     private final NLPAnalysisService nlpAnalysisService;
+    private final AlertNotesService alertNotesService;
     
     @GetMapping
     public ResponseEntity<Page<Alert>> getAlerts(
@@ -69,17 +74,17 @@ public class AlertController {
     
     @PostMapping("/{id}/resolve")
     public ResponseEntity<Alert> resolveAlert(
-            @PathVariable UUID id, @RequestBody ResolutionRequest request) {
+            @PathVariable String id, @RequestBody ResolutionRequest request) {
         
-        Alert resolvedAlert = alertService.resolveAlert(id.toString(), request.getResolutionNotes());
+        Alert resolvedAlert = alertService.resolveAlert(id, request.getResolutionNotes());
         return ResponseEntity.ok(resolvedAlert);
     }
     
     @PostMapping("/{id}/assign")
     public ResponseEntity<Alert> assignAlert(
-            @PathVariable UUID id, @RequestBody AssignmentRequest request) {
+            @PathVariable String id, @RequestBody AssignmentRequest request) {
         
-        Alert assignedAlert = alertService.assignAlert(id.toString(), request.getAssignedTo());
+        Alert assignedAlert = alertService.assignAlert(id, request.getAssignedTo());
         return ResponseEntity.ok(assignedAlert);
     }
     
@@ -209,6 +214,96 @@ public class AlertController {
         }
     }
     
+    // Notes Management Endpoints
+    @GetMapping("/{id}/assignment-notes")
+    public ResponseEntity<Map<String, Object>> getAssignmentNotes(@PathVariable String id) {
+        try {
+            Optional<AlertNotes> notes = alertNotesService.getNotes(id, NotesType.ASSIGNMENT);
+            if (notes.isPresent()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("notes", notes.get().getNotes());
+                response.put("assignedTo", notes.get().getAssignedTo());
+                response.put("lastModified", notes.get().getLastModified());
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.ok(Map.of("notes", ""));
+            }
+        } catch (Exception e) {
+            log.error("Error getting assignment notes for alert: {}", id, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/{id}/resolution-notes")
+    public ResponseEntity<Map<String, Object>> getResolutionNotes(@PathVariable String id) {
+        try {
+            Optional<AlertNotes> notes = alertNotesService.getNotes(id, NotesType.RESOLUTION);
+            if (notes.isPresent()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("notes", notes.get().getNotes());
+                response.put("lastModified", notes.get().getLastModified());
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.ok(Map.of("notes", ""));
+            }
+        } catch (Exception e) {
+            log.error("Error getting resolution notes for alert: {}", id, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/{id}/assignment-notes")
+    public ResponseEntity<Map<String, Object>> saveAssignmentNotes(
+            @PathVariable String id, @RequestBody NotesRequest request) {
+        try {
+            AlertNotes savedNotes = alertNotesService.saveNotes(
+                    id, 
+                    NotesType.ASSIGNMENT, 
+                    request.getNotes(), 
+                    request.getAssignedTo(), 
+                    "system" // TODO: Get from authentication context
+            );
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("notes", savedNotes.getNotes());
+            response.put("lastModified", savedNotes.getLastModified());
+            
+            log.info("Assignment notes saved for alert: {}", id);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error saving assignment notes for alert: {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/{id}/resolution-notes")
+    public ResponseEntity<Map<String, Object>> saveResolutionNotes(
+            @PathVariable String id, @RequestBody NotesRequest request) {
+        try {
+            AlertNotes savedNotes = alertNotesService.saveNotes(
+                    id, 
+                    NotesType.RESOLUTION, 
+                    request.getNotes(), 
+                    null, 
+                    "system" // TODO: Get from authentication context
+            );
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("notes", savedNotes.getNotes());
+            response.put("lastModified", savedNotes.getLastModified());
+            
+            log.info("Resolution notes saved for alert: {}", id);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error saving resolution notes for alert: {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
     // Essential DTOs only - removed redundant ones
     public static class ResolutionRequest {
         private String resolutionNotes;
@@ -222,6 +317,25 @@ public class AlertController {
         
         public String getAssignedTo() { return assignedTo; }
         public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+    }
+    
+    public static class NotesRequest {
+        private String notes;
+        private String assignedTo;
+        private String timestamp;
+        private String lastModified;
+        
+        public String getNotes() { return notes; }
+        public void setNotes(String notes) { this.notes = notes; }
+        
+        public String getAssignedTo() { return assignedTo; }
+        public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+        
+        public String getTimestamp() { return timestamp; }
+        public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
+        
+        public String getLastModified() { return lastModified; }
+        public void setLastModified(String lastModified) { this.lastModified = lastModified; }
     }
     
     // Simplified Dashboard Summary
@@ -270,18 +384,18 @@ public class AlertController {
         
         // Additional methods for dashboard summary
         public List<AlertSeverityCount> getSeverityCounts() { 
-            return severityCounts != null ? new ArrayList<>() : new ArrayList<>(severityCounts.entrySet().stream()
+            return severityCounts != null ? new ArrayList<>(severityCounts.entrySet().stream()
                 .map(entry -> new AlertSeverityCount(entry.getKey(), entry.getValue().intValue()))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList())) : new ArrayList<>();
         }
         
         public void setSeverityCounts(List<AlertSeverityCount> severityCounts) { 
-            this.severityCounts = severityCounts != null ? new HashMap<>() : severityCounts.stream()
-                .collect(Collectors.toMap(AlertSeverityCount::getSeverity, AlertSeverityCount::getCount));
+            this.severityCounts = severityCounts != null ? severityCounts.stream()
+                .collect(Collectors.toMap(AlertSeverityCount::getSeverity, AlertSeverityCount::getCount)) : new HashMap<>();
         }
         
         public List<RecentAlert> getRecentAlerts() {
-            return recentAlerts != null ? new ArrayList<>() : new ArrayList<>(recentAlerts);
+            return recentAlerts != null ? new ArrayList<>(recentAlerts) : new ArrayList<>();
         }
         
         public void setRecentAlerts(List<RecentAlert> recentAlerts) {

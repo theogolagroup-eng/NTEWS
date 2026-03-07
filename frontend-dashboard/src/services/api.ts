@@ -38,6 +38,11 @@ export const API_ENDPOINTS = {
     ACTIVE: `${API_BASE_URL}/api/alerts/active`,
     UNACKNOWLEDGED: `${API_BASE_URL}/api/alerts/unacknowledged`,
     STATISTICS: `${API_BASE_URL}/api/alerts/statistics`,
+    // Notes Management
+    ASSIGNMENT_NOTES: (id: string) => `${API_BASE_URL}/api/alerts/${id}/assignment-notes`,
+    RESOLUTION_NOTES: (id: string) => `${API_BASE_URL}/api/alerts/${id}/resolution-notes`,
+    SAVE_ASSIGNMENT_NOTES: (id: string) => `${API_BASE_URL}/api/alerts/${id}/assignment-notes`,
+    SAVE_RESOLUTION_NOTES: (id: string) => `${API_BASE_URL}/api/alerts/${id}/resolution-notes`,
     // NLP Analysis
     NLP_ANALYZE_TEXT: `${API_BASE_URL}/api/alerts/nlp/analyze-text`,
     NLP_BATCH_ANALYZE: `${API_BASE_URL}/api/alerts/nlp/batch-analyze`,
