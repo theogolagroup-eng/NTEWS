@@ -61,21 +61,15 @@ spring:
         
 
         - id: prediction-service
-
           uri: http://localhost:8082
-
           predicates:
-
             - Path=/api/predictions/**
-
           filters:
-
             - StripPrefix=0
 
             
 
         - id: ingestion-service
-
           uri: http://localhost:8084
 
           predicates:

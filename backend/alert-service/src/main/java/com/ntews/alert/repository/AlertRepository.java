@@ -27,7 +27,7 @@ public interface AlertRepository extends MongoRepository<Alert, String> {
     Page<Alert> findBySeverityAndStatusAndCreatedAtBetween(
             String severity, String status, LocalDateTime start, LocalDateTime end, Pageable pageable);
     
-    @Query("{ 'status': { $ne: 'resolved' }, 'status': { $ne: 'closed' } }")
+    @Query("{ 'status': { $nin: ['resolved', 'closed'] } }")
     Page<Alert> findActiveAlerts(Pageable pageable);
     
     @Query("{ 'status': 'active' }")
@@ -35,9 +35,6 @@ public interface AlertRepository extends MongoRepository<Alert, String> {
     
     @Query("{ 'status': 'active', 'severity': { $in: ?0 } }")
     List<Alert> findActiveAlertsBySeverity(List<String> severities);
-    
-    @Query("{ 'status': 'active' }")
-    Page<Alert> findActiveAlerts(Pageable pageable);
     
     @Query("{ 'status': 'active', 'assignedTo': ?0 }")
     List<Alert> findActiveAlertsByAssignee(String assignedTo);
@@ -51,7 +48,7 @@ public interface AlertRepository extends MongoRepository<Alert, String> {
     @Query("{ 'category': ?0, 'createdAt': { $gte: ?1, $lte: ?2 } }")
     List<Alert> findByCategoryAndCreatedAtBetween(String category, LocalDateTime start, LocalDateTime end);
     
-    @Query("{ 'resolved': true, 'resolvedAt': { $gte: ?0, $lte: ?1 } }")
+    @Query("{ 'acknowledged': true, 'resolvedAt': { $gte: ?0, $lte: ?1 } }")
     List<Alert> findResolvedAlertsBetween(LocalDateTime start, LocalDateTime end);
     
     @Query("{ 'status': 'active', 'createdAt': { $gte: ?0 } }")

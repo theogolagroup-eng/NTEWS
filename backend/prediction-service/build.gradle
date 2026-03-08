@@ -29,6 +29,9 @@ dependencies {
     // Spring Boot Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
+    // Alert Service dependency for shared Alert model
+    implementation project(':alert-service')
+    
     // Kafka for receiving intelligence data
     implementation 'org.springframework.kafka:spring-kafka'
     

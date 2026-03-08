@@ -32,19 +32,18 @@ import {
   Shield,
   Activity,
   MapPin,
-  Clock,
+  Target,
   Brain,
-  Users,
-  Globe,
-  Lock,
+  Database,
+  Clock,
+} from '@/components/icons';
+import {
   Cloud,
   MessageSquare,
   Vote,
   Zap,
-  Target,
   Eye,
   Radio,
-  Database
 } from 'lucide-react';
 
 interface ThreatAlert {

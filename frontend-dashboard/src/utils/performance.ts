@@ -1,4 +1,12 @@
 // Performance optimization utilities
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// Debounce function to prevent excessive API calls
 
 // Debounce function to prevent excessive API calls
 export function debounce<T extends (...args: any[]) => any>(
