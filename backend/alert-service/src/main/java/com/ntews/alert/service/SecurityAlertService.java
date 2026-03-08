@@ -2,7 +2,9 @@ package com.ntews.alert.service;
 
 import com.ntews.alert.model.SecurityAlert;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
@@ -13,12 +15,14 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Security Alert Service for real-time monitoring
- * Processes Sheng-aware security alerts with engagement metrics
+ * Enhanced Security Alert Service with AI Engine Integration
+ * Processes Sheng-aware security alerts with multilingual threat analysis
  */
 @Service
 @Slf4j
 public class SecurityAlertService {
+    
+    private final AIEngineIntegrationService aiEngineService;
     
     // In-memory storage for real-time processing
     private final Map<String, SecurityAlert> activeAlerts = new ConcurrentHashMap<>();
@@ -30,12 +34,20 @@ public class SecurityAlertService {
     private int highRiskAlertsCount = 0;
     private int shengDetectedCount = 0;
     private int engagementAlertsCount = 0;
+    private int aiAnalyzedAlertsCount = 0;
+    
+    @Autowired
+    public SecurityAlertService(AIEngineIntegrationService aiEngineService) {
+        this.aiEngineService = aiEngineService;
+    }
     
     /**
-     * Process incoming security alert
+     * Process incoming security alert with AI Engine analysis
      */
-    public void processSecurityAlert(SecurityAlert alert) {
-        try {
+    public Mono<SecurityAlert> processSecurityAlert(SecurityAlert alert) {
+        return Mono.fromCallable(() -> {
+            log.info("🚨 Processing security alert: {}", alert.getTitle());
+            
             // Store alert
             activeAlerts.put(alert.getId(), alert);
             
@@ -49,42 +61,198 @@ public class SecurityAlertService {
                 highRiskAlertsCount++;
             }
             
-            // Update Sheng detection count
-            if (alert.getShengWordsDetected() != null && !alert.getShengWordsDetected().isEmpty()) {
+            return alert;
+        })
+        .flatMap(originalAlert -> {
+            // Analyze with AI Engine if description is available
+            if (alert.getDescription() != null && !alert.getDescription().trim().isEmpty()) {
+                aiAnalyzedAlertsCount++;
+                return aiEngineService.analyzeTextThreat(alert.getDescription(), "security_alert")
+                    .map(aiResult -> enhanceAlertWithAIAnalysis(originalAlert, aiResult));
+            } else {
+                return Mono.just(originalAlert);
+            }
+        })
+        .doOnSuccess(enhancedAlert -> {
+            // Update statistics based on AI analysis
+            if (enhancedAlert.getShengWordsDetected() != null && !enhancedAlert.getShengWordsDetected().isEmpty()) {
                 shengDetectedCount++;
             }
             
-            // Update engagement alert count
-            if ("high_engagement".equals(alert.getRiskCategory())) {
-                engagementAlertsCount++;
-            }
+            // Update hashtag counts if present
+            updateHashtagCounts(enhancedAlert);
             
-            // Update hashtag tracking
-            updateHashtagTracking(alert.getText());
+            // Update Sheng keyword counts
+            updateShengKeywordCounts(enhancedAlert);
             
-            log.info("Processed security alert: {} | Risk: {} | Sheng: {} | Engagement: {}%",
-                alert.getId(), alert.getRiskCategory(), 
-                alert.getShengWordsDetected() != null ? alert.getShengWordsDetected().size() : 0,
-                alert.getEngagementScore());
-            
-        } catch (Exception e) {
-            log.error("Error processing security alert: {}", e.getMessage(), e);
+            log.info("✅ Enhanced alert processed with AI analysis: {} (confidence: {})", 
+                enhancedAlert.getRiskCategory(), enhancedAlert.getConfidence());
+        });
+    }
+    
+    /**
+     * Enhance alert with AI Engine analysis results
+     */
+    private SecurityAlert enhanceAlertWithAIAnalysis(SecurityAlert originalAlert, 
+                                                    AIEngineIntegrationService.ThreatAnalysisResult aiResult) {
+        
+        // Update risk category based on AI classification
+        String aiRiskCategory = mapAIToRiskCategory(aiResult.getClassification());
+        originalAlert.setRiskCategory(aiRiskCategory);
+        
+        // Update confidence
+        originalAlert.setConfidence(aiResult.getConfidence());
+        
+        // Update threat score
+        originalAlert.setThreatScore(aiResult.getRiskScore());
+        
+        // Add AI analysis metadata
+        originalAlert.setThreatKeywords(aiResult.getThreatKeywords());
+        originalAlert.setShengWordsDetected(aiResult.getShengWordsDetected());
+        originalAlert.setEastAfricanRelevance(aiResult.getEastAfricanRelevance());
+        originalAlert.setPoliticalContext(aiResult.isPoliticalContext());
+        originalAlert.setDetectedLanguage(aiResult.getDetectedLanguage());
+        originalAlert.setProcessingMethod(aiResult.getProcessingMethod());
+        
+        // Update severity based on AI analysis
+        if (aiResult.isHighConfidence() && aiResult.isThreat()) {
+            originalAlert.setSeverity("CRITICAL");
+        } else if (aiResult.isThreat()) {
+            originalAlert.setSeverity("HIGH");
+        } else if (aiResult.hasEastAfricanContext()) {
+            originalAlert.setSeverity("MEDIUM");
+        }
+        
+        return originalAlert;
+    }
+    
+    /**
+     * Map AI Engine classification to alert risk category
+     */
+    private String mapAIToRiskCategory(String aiClassification) {
+        switch (aiClassification.toLowerCase()) {
+            case "threat":
+                return "threat";
+            case "civil_unrest":
+                return "civil_unrest";
+            case "suspicious":
+                return "suspicious";
+            case "benign":
+            default:
+                return "benign";
         }
     }
     
     /**
-     * Update hashtag tracking from alert text
+     * Update hashtag counts from alert content
      */
-    private void updateHashtagTracking(String text) {
-        if (text == null) return;
-        
-        String[] words = text.toLowerCase().split("\\s+");
-        for (String word : words) {
-            if (word.startsWith("#")) {
-                String hashtag = word.substring(1);
-                hashtagCounts.merge(hashtag, 1, Integer::sum);
+    private void updateHashtagCounts(SecurityAlert alert) {
+        if (alert.getDescription() != null) {
+            String[] words = alert.getDescription().toLowerCase().split("\\s+");
+            for (String word : words) {
+                if (word.startsWith("#")) {
+                    String hashtag = word.substring(1);
+                    hashtagCounts.merge(hashtag, 1, (oldValue, newValue) -> oldValue + newValue);
+                }
             }
         }
+    }
+    
+    /**
+     * Update Sheng keyword counts
+     */
+    private void updateShengKeywordCounts(SecurityAlert alert) {
+        if (alert.getShengWordsDetected() != null && !alert.getShengWordsDetected().isEmpty()) {
+            String[] shengWords = alert.getShengWordsDetected().split(",\\s*");
+            for (String shengWord : shengWords) {
+                if (!shengWord.trim().isEmpty()) {
+                    shengKeywordCounts.merge(shengWord.trim(), 1, (oldValue, newValue) -> oldValue + newValue);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Get alert by ID
+     */
+    public SecurityAlert getAlert(String id) {
+        return activeAlerts.get(id);
+    }
+    
+    /**
+     * Get all active alerts
+     */
+    public List<SecurityAlert> getAllActiveAlerts() {
+        return new ArrayList<>(activeAlerts.values());
+    }
+    
+    /**
+     * Get alerts by risk category
+     */
+    public List<SecurityAlert> getAlertsByRiskCategory(String riskCategory) {
+        return activeAlerts.values().stream()
+                .filter(alert -> riskCategory.equals(alert.getRiskCategory()))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    }
+    
+    /**
+     * Get alerts with Sheng content
+     */
+    public List<SecurityAlert> getAlertsWithShengContent() {
+        return activeAlerts.values().stream()
+                .filter(alert -> alert.getShengWordsDetected() != null && !alert.getShengWordsDetected().isEmpty())
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    }
+    
+    /**
+     * Get trending hashtags
+     */
+    public Map<String, Integer> getTrendingHashtags() {
+        return hashtagCounts.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .limit(10)
+                .collect(java.util.stream.Collectors.toMap(
+                    Map.Entry::getKey, 
+                    Map.Entry::getValue, 
+                    (e1, e2) -> e1, 
+                    java.util.LinkedHashMap::new
+                ));
+    }
+    
+    /**
+     * Get top Sheng keywords
+     */
+    public Map<String, Integer> getTopShengKeywords() {
+        return shengKeywordCounts.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .limit(10)
+                .collect(java.util.stream.Collectors.toMap(
+                    Map.Entry::getKey, 
+                    Map.Entry::getValue, 
+                    (e1, e2) -> e1, 
+                    java.util.LinkedHashMap::new
+                ));
+    }
+    
+    /**
+     * Get daily statistics
+     */
+    public Map<String, Object> getDailyStatistics() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("alertsToday", alertsToday);
+        stats.put("highRiskAlertsCount", highRiskAlertsCount);
+        stats.put("shengDetectedCount", shengDetectedCount);
+        stats.put("engagementAlertsCount", engagementAlertsCount);
+        stats.put("aiAnalyzedAlertsCount", aiAnalyzedAlertsCount);
+        stats.put("activeAlertsCount", activeAlerts.size());
+        return stats;
+    }
+    
+    /**
+     * Check AI Engine health
+     */
+    public Mono<Boolean> isAIEngineHealthy() {
+        return aiEngineService.isAIEngineHealthy();
     }
     
     /**
@@ -113,85 +281,5 @@ public class SecurityAlertService {
      */
     public int getEngagementAlertsCount() {
         return engagementAlertsCount;
-    }
-    
-    /**
-     * Get trending hashtags
-     */
-    public Map<String, Integer> getTrendingHashtags() {
-        // Return top 10 hashtags by count
-        return hashtagCounts.entrySet().stream()
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit(10)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-    }
-    
-    /**
-     * Get top Sheng keywords
-     */
-    public Map<String, Integer> getTopShengKeywords() {
-        // Return top 10 Sheng keywords by frequency
-        return shengKeywordCounts.entrySet().stream()
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit(10)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-    }
-    
-    /**
-     * Get risk distribution
-     */
-    public Map<String, Integer> getRiskDistribution() {
-        Map<String, Integer> distribution = new HashMap<>();
-        distribution.put("benign", 0);
-        distribution.put("suspicious", 0);
-        distribution.put("threat", 0);
-        distribution.put("civil_unrest", 0);
-        distribution.put("high_engagement", 0);
-        
-        // Count active alerts by risk category
-        for (SecurityAlert alert : activeAlerts.values()) {
-            String category = alert.getRiskCategory();
-            distribution.merge(category, 1, Integer::sum);
-        }
-        
-        return distribution;
-    }
-    
-    /**
-     * Get trending security topics
-     */
-    public List<Map<String, Object>> getTrendingSecurityTopics() {
-        List<Map<String, Object>> topics = new ArrayList<>();
-        
-        // Get recent alerts with high risk or civil unrest
-        activeAlerts.values().stream()
-                .filter(alert -> "threat".equals(alert.getRiskCategory()) || 
-                                 "civil_unrest".equals(alert.getRiskCategory()) ||
-                                 "high_engagement".equals(alert.getRiskCategory()))
-                .limit(5)
-                .forEach(alert -> {
-                    Map<String, Object> topic = new HashMap<>();
-                    topic.put("text", alert.getText());
-                    topic.put("risk_category", alert.getRiskCategory());
-                    topic.put("confidence", alert.getConfidenceScore());
-                    topic.put("timestamp", alert.getTimestamp());
-                    topic.put("sheng_detected", alert.getShengWordsDetected() != null && !alert.getShengWordsDetected().isEmpty());
-                    topic.put("engagement_score", alert.getEngagementScore());
-                    topic.put("original_language", alert.getOriginalLanguage());
-                    topics.add(topic);
-                });
-        
-        return topics;
-    }
-    
-    /**
-     * Reset daily statistics (call at midnight)
-     */
-    public void resetDailyStatistics() {
-        alertsToday = 0;
-        highRiskAlertsCount = 0;
-        shengDetectedCount = 0;
-        engagementAlertsCount = 0;
-        log.info("Daily security statistics reset");
     }
 }

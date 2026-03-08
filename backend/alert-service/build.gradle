@@ -29,8 +29,9 @@ dependencies {
     // Spring Boot Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
-    // WebSocket for real-time alerts
+    // WebSocket for real-time alerts (with STOMP support)
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework:spring-messaging'
     
     // Kafka for receiving threat intelligence
     implementation 'org.springframework.kafka:spring-kafka'
@@ -49,6 +50,9 @@ dependencies {
     
     // Jackson for JSON processing
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    
+    // HTTP Client for AI Engine integration
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
     
     // Lombok
     compileOnly 'org.projectlombok:lombok'

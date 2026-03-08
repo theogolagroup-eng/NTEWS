@@ -1,74 +1,316 @@
 // MongoDB Initialization Script for NTEWS Alert Service
+// Enhanced with multilingual threat data and AI Engine integration
 // Run this script in MongoDB shell to initialize the database
 
 // Switch to ntews_alerts database
 use ntews_alerts;
 
-// Create alerts collection with sample data
+// Create alerts collection with comprehensive multilingual sample data
 db.alerts.insertMany([
+  // High-threat English alerts
   {
     _id: ObjectId(),
     id: "alert-001",
-    title: "Suspicious Network Activity Detected",
-    description: "Unusual traffic patterns detected on critical infrastructure",
-    severity: "HIGH",
+    title: "Critical Security Threat Detected",
+    description: "Violent protest activity reported near government building with immediate threat to public safety",
+    severity: "CRITICAL",
     status: "ACTIVE",
     category: "SECURITY",
     source: "Network Monitor",
-    location: "Data Center A",
-    threatScore: 0.75,
+    location: "Nairobi CBD",
+    riskCategory: "threat",
+    confidence: 0.85,
+    threatScore: 0.9,
+    threatKeywords: "violence, protest, threat, government, safety",
+    shengWordsDetected: "",
+    detectedLanguage: "english",
+    eastAfricanRelevance: 0.8,
+    politicalContext: true,
+    processingMethod: "rule_based",
     createdAt: new Date(),
     updatedAt: new Date(),
     acknowledged: false,
     assignedTo: null
   },
+  
+  // Swahili threat alert
   {
     _id: ObjectId(),
-    id: "alert-002", 
-    title: "Malware Signature Detected",
-    description: "Known malware signature found in email attachment",
-    severity: "CRITICAL",
+    id: "alert-002",
+    title: "Tishio la Usalama Lililotambulika",
+    description: "Maandamano yasiyo na idhini yameripotiwa katika mji wa Mombasa, polisi wamejibiwa kwa mawe",
+    severity: "HIGH",
     status: "ACTIVE",
-    category: "MALWARE",
-    source: "Email Scanner",
-    location: "Email Gateway",
-    threatScore: 0.92,
-    createdAt: new Date(Date.now() - 3600000),
+    category: "THREAT",
+    source: "Community Reporter",
+    location: "Mombasa Old Town",
+    riskCategory: "civil_unrest",
+    confidence: 0.75,
+    threatScore: 0.8,
+    threatKeywords: "maandamano, polisi, tishio, mawe, usalama",
+    shengWordsDetected: "",
+    detectedLanguage: "swahili",
+    eastAfricanRelevance: 0.9,
+    politicalContext: true,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
     updatedAt: new Date(),
     acknowledged: false,
     assignedTo: null
   },
+  
+  // Sheng threat alert
   {
     _id: ObjectId(),
     id: "alert-003",
-    title: "Failed Login Attempts",
-    description: "Multiple failed login attempts detected from external IP",
+    title: "Ghasia Zilizoripotiwa Westlands",
+    description: "Walevi wameibia duka karao wananchi wakaanza kutoroka maandamano yanazidi",
+    severity: "HIGH",
+    status: "ACTIVE",
+    category: "CIVIL_UNREST",
+    source: "Social Media Monitor",
+    location: "Westlands, Nairobi",
+    riskCategory: "threat",
+    confidence: 0.8,
+    threatScore: 0.75,
+    threatKeywords: "walevi, karao, maandamano, duka",
+    shengWordsDetected: "walevi -> thieves, karao -> police, maandamano -> protest",
+    detectedLanguage: "sheng-mixed",
+    eastAfricanRelevance: 0.8,
+    politicalContext: false,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  
+  // Suspicious activity - English
+  {
+    _id: ObjectId(),
+    id: "alert-004",
+    title: "Suspicious Network Activity",
+    description: "Unusual traffic patterns detected on critical infrastructure systems",
     severity: "MEDIUM",
-    status: "ACKNOWLEDGED",
-    category: "AUTHENTICATION",
-    source: "Authentication Service",
-    location: "Login Portal",
-    threatScore: 0.45,
-    createdAt: new Date(Date.now() - 7200000),
+    status: "ACTIVE",
+    category: "SECURITY",
+    source: "Network Monitor",
+    location: "Data Center A",
+    riskCategory: "suspicious",
+    confidence: 0.6,
+    threatScore: 0.4,
+    threatKeywords: "suspicious, unusual, traffic, infrastructure",
+    shengWordsDetected: "",
+    detectedLanguage: "english",
+    eastAfricanRelevance: 0.0,
+    politicalContext: false,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  
+  // Benign activity - Swahili
+  {
+    _id: ObjectId(),
+    id: "alert-005",
+    title: "Shughuli za Kawaida za Jamii",
+    description: "Wananchi wakijumuika katika sherehe ya kijiji chini ya usalama kamili",
+    severity: "LOW",
+    status: "RESOLVED",
+    category: "BENIGN",
+    source: "Community Leader",
+    location: "Kisumu",
+    riskCategory: "benign",
+    confidence: 0.8,
+    threatScore: 0.1,
+    threatKeywords: "",
+    shengWordsDetected: "",
+    detectedLanguage: "swahili",
+    eastAfricanRelevance: 0.7,
+    politicalContext: false,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
     updatedAt: new Date(),
     acknowledged: true,
-    assignedTo: "security-team@ntews.com"
+    assignedTo: "community_officer_01"
+  },
+  
+  // Non-threat English content
+  {
+    _id: ObjectId(),
+    id: "alert-006",
+    title: "Community Sports Event",
+    description: "Local football tournament bringing communities together in peaceful celebration",
+    severity: "LOW",
+    status: "ACTIVE",
+    category: "BENIGN",
+    source: "Event Coordinator",
+    location: "Nakuru",
+    riskCategory: "benign",
+    confidence: 0.9,
+    threatScore: 0.05,
+    threatKeywords: "",
+    shengWordsDetected: "",
+    detectedLanguage: "english",
+    eastAfricanRelevance: 0.6,
+    politicalContext: false,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  
+  // High-threat mixed language
+  {
+    _id: ObjectId(),
+    id: "alert-007",
+    title: "Mixed Language Threat Alert",
+    description: "Walevi wanakambo protest area violence unrest wanahitaji action immediately",
+    severity: "CRITICAL",
+    status: "ACTIVE",
+    category: "THREAT",
+    source: "Emergency Services",
+    location: "Eldoret Town",
+    riskCategory: "threat",
+    confidence: 0.85,
+    threatScore: 0.9,
+    threatKeywords: "walevi, wanakambo, protest, violence, unrest, action",
+    shengWordsDetected: "walevi -> thieves, wanakambo -> gathering, maandamano -> demonstration",
+    detectedLanguage: "sheng-mixed",
+    eastAfricanRelevance: 0.8,
+    politicalContext: true,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  
+  // Suspicious Sheng content
+  {
+    _id: ObjectId(),
+    id: "alert-008",
+    title: "Kongea Mambo Ya Usiku",
+    description: "Mambo ya kongea usiku karao wanatafuta walevi waliiba duka la simu",
+    severity: "MEDIUM",
+    status: "ACTIVE",
+    category: "SECURITY",
+    source: "Night Watch",
+    location: "Thika Road",
+    riskCategory: "suspicious",
+    confidence: 0.65,
+    threatScore: 0.5,
+    threatKeywords: "kongea, karao, walevi, duka, simu",
+    shengWordsDetected: "kongea -> planning, karao -> police, walevi -> thieves",
+    detectedLanguage: "sheng-mixed",
+    eastAfricanRelevance: 0.7,
+    politicalContext: false,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  
+  // Political tension alert
+  {
+    _id: ObjectId(),
+    id: "alert-009",
+    title: "Political Tension Rising",
+    description: "Election period approaching, political tensions increasing in urban centers",
+    severity: "HIGH",
+    status: "ACTIVE",
+    category: "CIVIL_UNREST",
+    source: "Political Analyst",
+    location: "Nationwide",
+    riskCategory: "civil_unrest",
+    confidence: 0.7,
+    threatScore: 0.6,
+    threatKeywords: "political, tensions, election, urban",
+    shengWordsDetected: "",
+    detectedLanguage: "english",
+    eastAfricanRelevance: 0.9,
+    politicalContext: true,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: false,
+    assignedTo: null
+  },
+  
+  // Normal daily activity - Swahili
+  {
+    _id: ObjectId(),
+    id: "alert-010",
+    title: "Shughuli Za Kila Siku",
+    description: "Leo nimepika ugali wa maharage na samaki wa kukaanga, kila kitu poa sana",
+    severity: "LOW",
+    status: "RESOLVED",
+    category: "BENIGN",
+    source: "Local Resident",
+    location: "Kilifi",
+    riskCategory: "benign",
+    confidence: 0.8,
+    threatScore: 0.05,
+    threatKeywords: "",
+    shengWordsDetected: "poa -> work/business",
+    detectedLanguage: "swahili",
+    eastAfricanRelevance: 0.5,
+    politicalContext: false,
+    processingMethod: "rule_based",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    acknowledged: true,
+    assignedTo: "community_officer_02"
   }
 ]);
 
-// Create indexes for better performance
-db.alerts.createIndex({ "status": 1 });
+// Create indexes for efficient querying
+db.alerts.createIndex({ "id": 1 }, { unique: true });
+db.alerts.createIndex({ "riskCategory": 1 });
 db.alerts.createIndex({ "severity": 1 });
-db.alerts.createIndex({ "createdAt": -1 });
-db.alerts.createIndex({ "category": 1 });
-db.alerts.createIndex({ "threatScore": -1 });
+db.alerts.createIndex({ "status": 1 });
+db.alerts.createIndex({ "detectedLanguage": 1 });
+db.alerts.createIndex({ "eastAfricanRelevance": 1 });
+db.alerts.createIndex({ "createdAt": 1 });
 
-// Create a simple view for active alerts
-db.createView("active_alerts", "alerts", [
-  { $match: { status: "ACTIVE" } }
-]);
+// Create statistics collection for real-time metrics
+db.alert_statistics.insertOne({
+  _id: ObjectId(),
+  date: new Date(),
+  totalAlerts: 10,
+  alertsByCategory: {
+    "SECURITY": 4,
+    "THREAT": 2,
+    "CIVIL_UNREST": 2,
+    "BENIGN": 2
+  },
+  alertsBySeverity: {
+    "CRITICAL": 2,
+    "HIGH": 3,
+    "MEDIUM": 2,
+    "LOW": 3
+  },
+  alertsByLanguage: {
+    "english": 4,
+    "swahili": 3,
+    "sheng-mixed": 3
+  },
+  alertsWithSheng: 3,
+  averageConfidence: 0.74,
+  averageThreatScore: 0.51,
+  eastAfricanRelevanceAverage: 0.67,
+  politicalContextAlerts: 4,
+  aiAnalyzedAlerts: 10,
+  updatedAt: new Date()
+});
 
-print("✅ NTEWS Alert Database initialized successfully!");
-print("📊 Sample alerts created: 3");
-print("🔍 Indexes created for performance");
-print("👁️  Active alerts view created");
+print("✅ NTEWS Alert Service database initialized with multilingual threat data");
+print("📊 Total alerts created: 10");
+print("🌍 Languages covered: English, Swahili, Sheng-mixed");
+print("🚨 Threat categories: CRITICAL, HIGH, MEDIUM, LOW");
+print("🔍 AI Engine integration: Rule-based threat detection");
+print("📍 East African relevance: High priority alerts flagged");

@@ -24,10 +24,11 @@ public class DataInitializer {
         return args -> {
             log.info("Initializing intelligence from real historical threat patterns...");
             
-            // Check if data already exists
-            if (intelligenceReportRepository.count() > 0) {
-                log.info("Intelligence data already exists, skipping initialization");
-                return;
+            // Check if data already exists and force refresh
+            long existingCount = intelligenceReportRepository.count();
+            if (existingCount > 0) {
+                log.info("🗑️  Clearing {} existing intelligence reports for fresh multilingual initialization", existingCount);
+                intelligenceReportRepository.deleteAll();
             }
             
             // Create intelligence reports based on real historical patterns and ML analysis
@@ -222,11 +223,104 @@ public class DataInitializer {
                     .verificationNotes("Auto-verified by system")
                     .verifiedAt(LocalDateTime.now().minusHours(6))
                     .verifiedBy("System")
+                    .build(),
+                    
+                // Multilingual Social Media Intelligence - Swahili
+                IntelligenceReport.builder()
+                    .id("intel-swahili-001")
+                    .title("Maandamano ya Kiswahili - Uchambuzi wa Akili")
+                    .content("AI imetambua maandamano yanayopangwa kwa lugha ya Kiswahili katika mitandao ya kijamii. Maneno yatakayotambuliwa: 'tishio', 'usalama', 'polisi', 'mawe'. Uchambuzi unaonyesha uwezekano wa 85% wa maandamano kuanzia saa 24 zijazo. Historia inaonyesha mifumo sawa katika uchaguzi wa 2017 na 2022.")
+                    .threatLevel(IntelligenceReport.ThreatLevel.HIGH)
+                    .status(IntelligenceReport.ReportStatus.PUBLISHED)
+                    .category(IntelligenceReport.ThreatCategory.SOCIAL_MEDIA_THREAT)
+                    .sources(Arrays.asList(
+                        IntelligenceReport.ThreatIntelligence.builder()
+                            .id("source-swahili-001")
+                            .source("AI Multilingual Monitor")
+                            .sourceType("ai_analysis")
+                            .content("Swahili social media threat analysis")
+                            .timestamp(LocalDateTime.now().minusHours(1))
+                            .relevanceScore(0.88)
+                            .verified(true)
+                            .build()
+                    ))
+                    .affectedRegions(Arrays.asList("Nairobi", "Mombasa", "Dar es Salaam"))
+                    .confidenceScore(0.85)
+                    .createdAt(LocalDateTime.now().minusHours(1))
+                    .updatedAt(LocalDateTime.now().minusHours(1))
+                    .createdBy("AI Multilingual Engine")
+                    .verified(true)
+                    .verificationNotes("AI-verified Swahili content analysis")
+                    .verifiedAt(LocalDateTime.now().minusHours(1))
+                    .verifiedBy("AI Engine")
+                    .build(),
+                    
+                // Sheng Slang Intelligence Report
+                IntelligenceReport.builder()
+                    .id("intel-sheng-001")
+                    .title("Ghasia za Sheng - Uchambuzi wa Slang")
+                    .content("AI imetambua matumizi ya lugha ya Sheng katika mawasiliano ya kigaidi. Maneno yaliyotambuliwa: 'walevi' (wahalifu), 'karao' (polisi), 'kongea' (kupanga), 'maandamano' (protest). Uchambuzi unaonyesha mpango wa kufanya ghasia katika eneo la Westlands. Uwezekano wa tukio: 78%.")
+                    .threatLevel(IntelligenceReport.ThreatLevel.HIGH)
+                    .status(IntelligenceReport.ReportStatus.PUBLISHED)
+                    .category(IntelligenceReport.ThreatCategory.CRIMINAL_ACTIVITY)
+                    .sources(Arrays.asList(
+                        IntelligenceReport.ThreatIntelligence.builder()
+                            .id("source-sheng-001")
+                            .source("AI Sheng Analysis Engine")
+                            .sourceType("ai_sheng_analysis")
+                            .content("Sheng slang threat detection and translation")
+                            .timestamp(LocalDateTime.now().minusMinutes(30))
+                            .relevanceScore(0.92)
+                            .verified(true)
+                            .build()
+                    ))
+                    .affectedRegions(Arrays.asList("Westlands", "Nairobi CBD", "Kasarani"))
+                    .confidenceScore(0.78)
+                    .createdAt(LocalDateTime.now().minusMinutes(30))
+                    .updatedAt(LocalDateTime.now().minusMinutes(30))
+                    .createdBy("AI Sheng Engine")
+                    .verified(true)
+                    .verificationNotes("AI-verified Sheng slang analysis")
+                    .verifiedAt(LocalDateTime.now().minusMinutes(30))
+                    .verifiedBy("AI Sheng Processor")
+                    .build(),
+                    
+                // Mixed Language Threat Intelligence
+                IntelligenceReport.builder()
+                    .id("intel-mixed-001")
+                    .title("Tishio la Lugha Mseti - Mixed Language Threat")
+                    .content("AI imetambua mawasiliano yanayotumia lugha mseti (Kiingereza, Kiswahili, na Sheng). Yaliyotambuliwa: 'wanakambo' (mkutano), 'walevi' (wahalifu), 'action immediately' (hatua ya haraka). Mawasiliano yanaonyesha mpango wa kufanya ghasia katika miji mingi. Uwezekano wa tukio: 82%.")
+                    .threatLevel(IntelligenceReport.ThreatLevel.CRITICAL)
+                    .status(IntelligenceReport.ReportStatus.PUBLISHED)
+                    .category(IntelligenceReport.ThreatCategory.COORDINATED_ATTACK)
+                    .sources(Arrays.asList(
+                        IntelligenceReport.ThreatIntelligence.builder()
+                            .id("source-mixed-001")
+                            .source("AI Multilingual Cross-Language Analysis")
+                            .sourceType("ai_multilingual")
+                            .content("Cross-language threat pattern detection")
+                            .timestamp(LocalDateTime.now().minusMinutes(15))
+                            .relevanceScore(0.95)
+                            .verified(true)
+                            .build()
+                    ))
+                    .affectedRegions(Arrays.asList("Nairobi", "Mombasa", "Kisumu", "Eldoret"))
+                    .confidenceScore(0.82)
+                    .createdAt(LocalDateTime.now().minusMinutes(15))
+                    .updatedAt(LocalDateTime.now().minusMinutes(15))
+                    .createdBy("AI Multilingual Engine")
+                    .verified(true)
+                    .verificationNotes("AI-verified multilingual threat analysis")
+                    .verifiedAt(LocalDateTime.now().minusMinutes(15))
+                    .verifiedBy("AI Cross-Language Processor")
                     .build()
             );
             
             intelligenceReportRepository.saveAll(historicalIntelligence);
-            log.info("Successfully initialized {} intelligence reports based on real historical threat patterns and ML analysis", historicalIntelligence.size());
+            log.info("✅ Successfully initialized {} intelligence reports with multilingual AI Engine analysis", historicalIntelligence.size());
+            log.info("🌍 Languages covered: English, Swahili, Sheng, Mixed-Language");
+            log.info("🧠 AI Engine integration: Multilingual threat detection");
+            log.info("🔍 Intelligence sources: Human, AI Multilingual, AI Sheng Analysis");
         };
     }
 }

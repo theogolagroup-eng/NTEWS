@@ -136,10 +136,20 @@ public class TwitterIngestionService {
                         .queryParam("expansions", "author_id")
                         .build())
                 .retrieve()
+                .onStatus(status -> status.is4xxClientError(), response -> {
+                    log.error("Twitter API 4xx error: {}", response.statusCode());
+                    return Mono.error(new RuntimeException("Twitter API authentication failed: " + response.statusCode()));
+                })
+                .onStatus(status -> status.is5xxServerError(), response -> {
+                    log.error("Twitter API 5xx error: {}", response.statusCode());
+                    return Mono.error(new RuntimeException("Twitter API server error: " + response.statusCode()));
+                })
                 .bodyToFlux(String.class)
                 .filter(line -> !line.trim().isEmpty() && line.startsWith("{"))
                 .map(this::parseTweet)
-                .filter(tweetData -> tweetData != null && tweetData.has("data"));
+                .filter(tweetData -> tweetData != null && tweetData.has("data"))
+                .doOnNext(tweet -> log.info(" Received tweet: {}", tweet.get("data").get("text").asText()))
+                .doOnError(error -> log.error(" Twitter stream error: {}", error.getMessage()));
     }
 
     /**

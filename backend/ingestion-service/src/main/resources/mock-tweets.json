@@ -1,0 +1,402 @@
+[
+  {
+    "id": "mock_tweet_001",
+    "author_id": "user_nairobi_001",
+    "text": "Maandamano ya police Nairobi wananchi wanakambo karao CBD",
+    "created_at": "2026-03-08T12:00:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 25,
+      "like_count": 100,
+      "reply_count": 15,
+      "quote_count": 5
+    },
+    "author_info": {
+      "name": "Nairobi Watcher",
+      "username": "naiwatcher",
+      "location": "Nairobi, Kenya",
+      "verified": false,
+      "followers_count": 1500
+    }
+  },
+  {
+    "id": "mock_tweet_002", 
+    "author_id": "user_mombasa_002",
+    "text": "Police kongea wananchi mambo ya security threat demonstration",
+    "created_at": "2026-03-08T12:05:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 45,
+      "like_count": 200,
+      "reply_count": 30,
+      "quote_count": 12
+    },
+    "author_info": {
+      "name": "Coast Reporter",
+      "username": "coastreport",
+      "location": "Mombasa, Kenya", 
+      "verified": true,
+      "followers_count": 5000
+    }
+  },
+  {
+    "id": "mock_tweet_003",
+    "author_id": "user_kisumu_003",
+    "text": "Walevi wanakambo protest area violence unrest wanahitaji action",
+    "created_at": "2026-03-08T12:10:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 15,
+      "like_count": 80,
+      "reply_count": 20,
+      "quote_count": 8
+    },
+    "author_info": {
+      "name": "Lake Observer",
+      "username": "lakeobserver",
+      "location": "Kisumu, Kenya",
+      "verified": false,
+      "followers_count": 800
+    }
+  },
+  {
+    "id": "mock_tweet_004",
+    "author_id": "user_nakuru_004",
+    "text": "Security meeting police commissioners discuss civil unrest strategies",
+    "created_at": "2026-03-08T12:15:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 35,
+      "like_count": 150,
+      "reply_count": 25,
+      "quote_count": 10
+    },
+    "author_info": {
+      "name": "Rift Valley News",
+      "username": "rvnews",
+      "location": "Nakuru, Kenya",
+      "verified": true,
+      "followers_count": 3000
+    }
+  },
+  {
+    "id": "mock_tweet_005",
+    "author_id": "user_eldoret_005",
+    "text": "Threat level high mambo ya karao wananchi wakihofia maandamano",
+    "created_at": "2026-03-08T12:20:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 20,
+      "like_count": 120,
+      "reply_count": 18,
+      "quote_count": 6
+    },
+    "author_info": {
+      "name": "North Reporter",
+      "username": "northreport",
+      "location": "Eldoret, Kenya",
+      "verified": false,
+      "followers_count": 1200
+    }
+  },
+  {
+    "id": "mock_tweet_006",
+    "author_id": "user_foodie_006",
+    "text": "Leo nimepika ugali wa maharage na samaki wa kukaanga, kila kitu poa sana",
+    "created_at": "2026-03-08T12:25:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 5,
+      "like_count": 45,
+      "reply_count": 8,
+      "quote_count": 2
+    },
+    "author_info": {
+      "name": "Kenya Food Lover",
+      "username": "kenyachef",
+      "location": "Nairobi, Kenya",
+      "verified": false,
+      "followers_count": 600
+    }
+  },
+  {
+    "id": "mock_tweet_007",
+    "author_id": "user_tech_007",
+    "text": "Just launched my new mobile app for Kenyan farmers to track market prices. Available on Play Store!",
+    "created_at": "2026-03-08T12:30:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 12,
+      "like_count": 89,
+      "reply_count": 22,
+      "quote_count": 4
+    },
+    "author_info": {
+      "name": "Tech Innovator",
+      "username": "techkenya",
+      "location": "Nairobi, Kenya",
+      "verified": true,
+      "followers_count": 2500
+    }
+  },
+  {
+    "id": "mock_tweet_008",
+    "author_id": "user_sports_008",
+    "text": "Huu ni mechi bora sana! Gor Mahia wameshinda tena 2-0 dhidi ya Tusker",
+    "created_at": "2026-03-08T12:35:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 18,
+      "like_count": 156,
+      "reply_count": 34,
+      "quote_count": 7
+    },
+    "author_info": {
+      "name": "Football Fan",
+      "username": "sportske",
+      "location": "Kisumu, Kenya",
+      "verified": false,
+      "followers_count": 900
+    }
+  },
+  {
+    "id": "mock_tweet_009",
+    "author_id": "user_business_009",
+    "text": "Kenyan economy is growing strong this quarter. GDP up by 5.2% according to latest statistics",
+    "created_at": "2026-03-08T12:40:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 28,
+      "like_count": 234,
+      "reply_count": 41,
+      "quote_count": 15
+    },
+    "author_info": {
+      "name": "Business Analyst",
+      "username": "economyke",
+      "location": "Nairobi, Kenya",
+      "verified": true,
+      "followers_count": 4500
+    }
+  },
+  {
+    "id": "mock_tweet_010",
+    "author_id": "user_health_010",
+    "text": "Remember to drink plenty of water and stay hydrated during this hot season. Health is wealth!",
+    "created_at": "2026-03-08T12:45:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 8,
+      "like_count": 67,
+      "reply_count": 12,
+      "quote_count": 3
+    },
+    "author_info": {
+      "name": "Health Tips",
+      "username": "healthkenya",
+      "location": "Mombasa, Kenya",
+      "verified": false,
+      "followers_count": 1200
+    }
+  },
+  {
+    "id": "mock_tweet_011",
+    "author_id": "user_sheng_011",
+    "text": "Mambo ndio! Leo tukutane Westlands kwa party, mzinga iko full",
+    "created_at": "2026-03-08T12:50:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 15,
+      "like_count": 92,
+      "reply_count": 28,
+      "quote_count": 6
+    },
+    "author_info": {
+      "name": "Party Animal",
+      "username": "nai_vibes",
+      "location": "Nairobi, Kenya",
+      "verified": false,
+      "followers_count": 750
+    }
+  },
+  {
+    "id": "mock_tweet_012",
+    "author_id": "user_education_012",
+    "text": "KCSE results are out! Congratulations to all students who performed well",
+    "created_at": "2026-03-08T12:55:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 42,
+      "like_count": 378,
+      "reply_count": 89,
+      "quote_count": 23
+    },
+    "author_info": {
+      "name": "Education Kenya",
+      "username": "eduke",
+      "location": "Nairobi, Kenya",
+      "verified": true,
+      "followers_count": 8000
+    }
+  },
+  {
+    "id": "mock_tweet_013",
+    "author_id": "user_tourism_013",
+    "text": "Beautiful sunset at Diani Beach today. Kenya truly has amazing tourist destinations",
+    "created_at": "2026-03-08T13:00:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 67,
+      "like_count": 489,
+      "reply_count": 76,
+      "quote_count": 34
+    },
+    "author_info": {
+      "name": "Tourism Kenya",
+      "username": "magicalkenya",
+      "location": "Mombasa, Kenya",
+      "verified": true,
+      "followers_count": 15000
+    }
+  },
+  {
+    "id": "mock_tweet_014",
+    "author_id": "user_sheng_014",
+    "text": "Niaje wasee, mambo gani? Leo niko jobo, tutaonana baadaye",
+    "created_at": "2026-03-08T13:05:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 3,
+      "like_count": 28,
+      "reply_count": 11,
+      "quote_count": 1
+    },
+    "author_info": {
+      "name": "Street Life",
+      "username": "nai_street",
+      "location": "Nairobi, Kenya",
+      "verified": false,
+      "followers_count": 400
+    }
+  },
+  {
+    "id": "mock_tweet_015",
+    "author_id": "user_politics_015",
+    "text": "Political tensions rising as election approaches. Peaceful transition is crucial for our democracy",
+    "created_at": "2026-03-08T13:10:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 89,
+      "like_count": 567,
+      "reply_count": 234,
+      "quote_count": 67
+    },
+    "author_info": {
+      "name": "Political Analyst",
+      "username": "politicske",
+      "location": "Nairobi, Kenya",
+      "verified": true,
+      "followers_count": 12000
+    }
+  },
+  {
+    "id": "mock_tweet_016",
+    "author_id": "user_agriculture_016",
+    "text": "Mavuno ya mahindi yamefaa vizuri msimu huu. Wakulima wakifurahi sana",
+    "created_at": "2026-03-08T13:15:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 11,
+      "like_count": 78,
+      "reply_count": 19,
+      "quote_count": 4
+    },
+    "author_info": {
+      "name": "Farmer Kenya",
+      "username": "mkulimake",
+      "location": "Eldoret, Kenya",
+      "verified": false,
+      "followers_count": 650
+    }
+  },
+  {
+    "id": "mock_tweet_017",
+    "author_id": "user_sheng_017",
+    "text": "Hio story ni fake, usiweke roho, maisha yanaendelea tu",
+    "created_at": "2026-03-08T13:20:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 7,
+      "like_count": 45,
+      "reply_count": 16,
+      "quote_count": 3
+    },
+    "author_info": {
+      "name": "Real Talk",
+      "username": "real_ke",
+      "location": "Nairobi, Kenya",
+      "verified": false,
+      "followers_count": 320
+    }
+  },
+  {
+    "id": "mock_tweet_018",
+    "author_id": "user_entertainment_018",
+    "text": "New Kenyan movie premiering this weekend! Support local talent and cinema",
+    "created_at": "2026-03-08T13:25:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 34,
+      "like_count": 267,
+      "reply_count": 58,
+      "quote_count": 19
+    },
+    "author_info": {
+      "name": "Entertainment KE",
+      "username": "entertainmentke",
+      "location": "Nairobi, Kenya",
+      "verified": true,
+      "followers_count": 3500
+    }
+  },
+  {
+    "id": "mock_tweet_019",
+    "author_id": "user_sheng_019",
+    "text": "Walevi wameibia duka karao kitu kubwa, wananchi wakaanza kutoroka",
+    "created_at": "2026-03-08T13:30:00Z",
+    "lang": "sw",
+    "public_metrics": {
+      "retweet_count": 22,
+      "like_count": 145,
+      "reply_count": 38,
+      "quote_count": 12
+    },
+    "author_info": {
+      "name": "Crime Reporter",
+      "username": "crimewatchke",
+      "location": "Nairobi, Kenya",
+      "verified": false,
+      "followers_count": 1800
+    }
+  },
+  {
+    "id": "mock_tweet_020",
+    "author_id": "user_weather_020",
+    "text": "Heavy rains expected in western Kenya this weekend. Stay safe and avoid flooded areas",
+    "created_at": "2026-03-08T13:35:00Z",
+    "lang": "en",
+    "public_metrics": {
+      "retweet_count": 56,
+      "like_count": 389,
+      "reply_count": 67,
+      "quote_count": 28
+    },
+    "author_info": {
+      "name": "Weather Kenya",
+      "username": "weatherke",
+      "location": "Nairobi, Kenya",
+      "verified": true,
+      "followers_count": 9500
+    }
+  }
+]

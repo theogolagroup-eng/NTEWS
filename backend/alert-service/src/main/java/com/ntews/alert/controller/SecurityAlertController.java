@@ -83,9 +83,9 @@ public class SecurityAlertController {
     public ResponseEntity<Map<String, Object>> getTrendingTopics() {
         try {
             Map<String, Object> response = new HashMap<>();
-            response.put("trending_topics", securityAlertService.getTrendingSecurityTopics());
+            response.put("trending_hashtags", securityAlertService.getTrendingHashtags());
             response.put("sheng_keywords", securityAlertService.getTopShengKeywords());
-            response.put("risk_distribution", securityAlertService.getRiskDistribution());
+            response.put("daily_statistics", securityAlertService.getDailyStatistics());
             response.put("timestamp", LocalDateTime.now());
             
             return ResponseEntity.ok(response);
@@ -133,18 +133,25 @@ public class SecurityAlertController {
     private SecurityAlert createManualAlert(Map<String, Object> request) {
         SecurityAlert alert = new SecurityAlert();
         alert.setId((String) request.getOrDefault("id", "manual-" + System.currentTimeMillis()));
-        alert.setUsername((String) request.getOrDefault("username", "test_user"));
-        alert.setText((String) request.getOrDefault("text", "Manual test alert"));
-        alert.setTimestamp(LocalDateTime.now().toString());
-        alert.setOriginalLanguage("english");
-        alert.setRiskCategory((String) request.getOrDefault("category", "test"));
-        alert.setConfidenceScore(0.9);
-        alert.setRepostPercentage(0.0);
-        alert.setCommentPercentage(0.0);
+        alert.setTitle((String) request.getOrDefault("title", "Manual Test Alert"));
+        alert.setDescription((String) request.getOrDefault("text", "Manual test alert"));
+        alert.setTimestamp(LocalDateTime.now());
+        alert.setSeverity((String) request.getOrDefault("severity", "MEDIUM"));
+        alert.setStatus("ACTIVE");
+        alert.setCategory((String) request.getOrDefault("category", "SECURITY"));
+        alert.setSource("Manual Test");
+        alert.setLocation("Test Location");
+        
+        // Set AI analysis fields
+        alert.setRiskCategory((String) request.getOrDefault("category", "benign"));
+        alert.setConfidence(0.9);
+        alert.setThreatScore(0.5);
+        alert.setDetectedLanguage("english");
+        alert.setProcessingMethod("manual");
         
         // Set engagement metrics if provided
         if (request.containsKey("retweets")) {
-            alert.calculateMetrics(
+            alert.calculateEngagementMetrics(
                 ((Number) request.get("retweets")).longValue(),
                 ((Number) request.getOrDefault("replies", 0)).longValue(),
                 ((Number) request.getOrDefault("likes", 0)).longValue(),

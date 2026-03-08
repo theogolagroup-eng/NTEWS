@@ -43,9 +43,9 @@ class ShengNLPProcessor:
         
         # Security context keywords in multiple languages
         self.security_keywords = {
-            "swahili": ["maandamano", "ghasia", "tatu", "mapinduzi", "hatari"],
-            "english": ["protest", "demonstration", "unrest", "violence", "threat"],
-            "sheng": ["risto", "mambo", "kongea", "maandamano"]
+            "swahili": ["maandamano", "ghasia", "tatu", "mapinduzi", "hatari", "polisi", "karao", "kongea", "mambo", "walevi", "wanakambo", "tishio", "ghasia", "vita", "fujo"],
+            "english": ["protest", "demonstration", "unrest", "violence", "threat", "police", "security", "riot", "civil", "unrest", "danger", "attack", "crime"],
+            "sheng": ["risto", "mambo", "kongea", "maandamano", "karao", "walevi", "wanakambo", "tishio", "ghasia"]
         }
         
         self.load_models()
@@ -136,175 +136,274 @@ class ShengNLPProcessor:
     
     def analyze_text_threat(self, text: str, context: str = None) -> Dict[str, any]:
         """
-        Analyze text for threat detection using multilingual strategy
+        Analyze text for threat detection using rule-based approach with keyword detection
+        This replaces the unreliable ML models with deterministic logic
         """
         try:
+            logger.info(f"Starting threat analysis for: '{text[:50]}...'")
+            
             # Normalize Sheng slang first
             normalized_text = self.normalize_sheng_text(text)
             
             # Detect language
             detected_language = self.detect_language(normalized_text)
             
-            # Choose appropriate model based on language detection
-            if detected_language in ["swahili", "sheng-mixed"]:
-                return self._analyze_with_swahili_model(normalized_text, context)
-            else:
-                return self._analyze_with_english_model(normalized_text, context)
-                
-        except Exception as e:
-            logger.error(f"Error in multilingual threat analysis: {e}")
-            return self._get_default_response()
-    
-    def _analyze_with_swahili_model(self, text: str, context: str = None) -> Dict[str, any]:
-        """
-        Analyze using Swahili-BERT model for better East African context
-        """
-        if not self.swahili_model or not self.swahili_tokenizer:
-            logger.warning("Swahili model not loaded, using English fallback")
-            return self._analyze_with_english_model(text, context)
-        
-        try:
-            # Tokenize input
-            inputs = self.swahili_tokenizer(
-                text, 
-                return_tensors="pt", 
-                truncation=True, 
-                max_length=512,
-                padding=True
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            # Extract threat keywords FIRST
+            threat_keywords = self._extract_multilingual_threat_keywords(normalized_text)
             
-            # Get predictions
-            with torch.no_grad():
-                outputs = self.swahili_model(**inputs)
-                probabilities = torch.softmax(outputs.logits, dim=-1)
-                probs = probabilities.cpu().numpy()[0]
+            # RULE-BASED CLASSIFICATION (replaces ML models)
+            classification_result = self._rule_based_threat_classification(normalized_text, threat_keywords, detected_language)
             
-            # Map to Swahili-aware threat levels
-            threat_labels = ["benign", "suspicious", "threat", "civil_unrest"]
-            predictions = {
-                label: float(prob) for label, prob in zip(threat_labels, probs)
-            }
+            # Extract Sheng words
+            sheng_words = self._extract_sheng_words(text)
             
-            # Get highest probability label
-            max_label = threat_labels[np.argmax(probs)]
-            confidence = float(np.max(probs))
+            # Analyze sentiment
+            sentiment_scores = self._analyze_multilingual_sentiment(text)
             
-            # Enhanced context analysis for East African social context
-            context_enhancement = self._analyze_east_african_context(text, context)
+            # Context enhancement
+            context_enhancement = self._analyze_contextual_factors(text, context)
+            
+            # Calculate risk score
+            risk_score = self._calculate_contextual_risk_score(classification_result["threat_probabilities"], context_enhancement)
             
             result = {
-                "text": text,
-                "original_language": "swahili-mixed",
-                "classification": max_label,
-                "confidence": confidence,
-                "threat_probabilities": predictions,
-                "sentiment_scores": self._analyze_multilingual_sentiment(text),
-                "threat_keywords": self._extract_multilingual_threat_keywords(text),
-                "risk_score": self._calculate_contextual_risk_score(predictions, context_enhancement),
+                "original_text": text,
+                "normalized_text": normalized_text,
+                "sheng_words_detected": sheng_words,
+                "detected_language": detected_language,
+                "classification": classification_result["classification"],
+                "confidence": classification_result["confidence"],
+                "threat_probabilities": classification_result["threat_probabilities"],
+                "sentiment_scores": sentiment_scores,
+                "threat_keywords": threat_keywords,
+                "risk_score": risk_score,
                 "context_enhancement": context_enhancement,
-                "recommendations": self._generate_culturally_aware_recommendations(max_label, confidence, text),
-                "sheng_words_detected": self._extract_sheng_words(text)
+                "recommendations": self._generate_culturally_aware_recommendations(classification_result["classification"], classification_result["confidence"], text),
+                "processing_metadata": {"method": "rule_based", "language": detected_language}
             }
             
-            logger.info(f"Swahili-BERT analysis: {max_label} (confidence: {confidence})")
+            logger.info(f"Rule-based analysis: {result['classification']} (confidence: {result['confidence']}) - Keywords: {threat_keywords}")
             return result
             
         except Exception as e:
-            logger.error(f"Error in Swahili model analysis: {e}")
+            logger.error(f"Error in rule-based threat analysis: {e}")
             return self._get_default_response()
+    
+    def _rule_based_threat_classification(self, text: str, threat_keywords: List[str], language: str) -> Dict[str, any]:
+        """
+        Rule-based threat classification using keyword detection and patterns
+        This replaces unreliable ML models with deterministic logic
+        """
+        text_lower = text.lower()
+        
+        # High-priority threat keywords (immediate danger)
+        high_priority_keywords = ["violence", "riot", "attack", "kill", "bomb", "terrorist", "gun", "weapon", "vita", "ua", "kufa"]
+        
+        # Medium-priority threat keywords (potential danger)
+        medium_priority_keywords = ["protest", "demonstration", "unrest", "maandamano", "ghasia", "tatu", "mapinduzi", "police", "karao", "security", "threat", "hatari"]
+        
+        # Low-priority threat keywords (suspicious activity)
+        low_priority_keywords = ["suspicious", "walevi", "wanakambo", "kongea", "mambo", "crime", "theft", "noma"]
+        
+        # Count keywords by priority
+        high_count = sum(1 for keyword in high_priority_keywords if keyword in text_lower)
+        medium_count = sum(1 for keyword in medium_priority_keywords if keyword in text_lower)
+        low_count = sum(1 for keyword in low_priority_keywords if keyword in text_lower)
+        
+        total_keywords = high_count + medium_count + low_count
+        
+        logger.info(f"Keyword counts - High: {high_count}, Medium: {medium_count}, Low: {low_count}")
+        
+        # Determine classification based on keyword analysis
+        if high_count >= 1:
+            classification = "threat"
+            confidence = min(0.95, 0.6 + (high_count * 0.15))
+            threat_prob = 0.8 + (high_count * 0.05)
+        elif medium_count >= 2:
+            classification = "threat"
+            confidence = min(0.85, 0.5 + (medium_count * 0.15))
+            threat_prob = 0.6 + (medium_count * 0.1)
+        elif medium_count >= 1:
+            classification = "suspicious"
+            confidence = min(0.75, 0.4 + (medium_count * 0.2))
+            threat_prob = 0.3 + (medium_count * 0.15)
+        elif low_count >= 2:
+            classification = "suspicious"
+            confidence = min(0.65, 0.3 + (low_count * 0.15))
+            threat_prob = 0.2 + (low_count * 0.1)
+        elif low_count >= 1:
+            classification = "suspicious"
+            confidence = 0.4
+            threat_prob = 0.2
+        else:
+            classification = "benign"
+            confidence = 0.8
+            threat_prob = 0.05
+        
+        # Calculate civil_unrest probability
+        civil_unrest_keywords = ["protest", "demonstration", "unrest", "maandamano", "ghasia", "tatu", "mapinduzi"]
+        civil_unrest_count = sum(1 for keyword in civil_unrest_keywords if keyword in text_lower)
+        civil_unrest_prob = min(0.9, civil_unrest_count * 0.3)
+        
+        # Normalize probabilities
+        benign_prob = 1.0 - confidence if classification == "benign" else 0.1
+        suspicious_prob = 1.0 - threat_prob - benign_prob - civil_unrest_prob
+        suspicious_prob = max(0.0, suspicious_prob)
+        
+        threat_probabilities = {
+            "benign": max(0.0, benign_prob),
+            "suspicious": max(0.0, suspicious_prob),
+            "threat": max(0.0, threat_prob),
+            "civil_unrest": max(0.0, civil_unrest_prob)
+        }
+        
+        # Normalize to sum to 1.0
+        total_prob = sum(threat_probabilities.values())
+        if total_prob > 0:
+            threat_probabilities = {k: v/total_prob for k, v in threat_probabilities.items()}
+        
+        return {
+            "classification": classification,
+            "confidence": confidence,
+            "threat_probabilities": threat_probabilities
+        }
+    
+    def _get_default_response(self) -> Dict[str, any]:
+        """
+        Default response when analysis fails
+        """
+        return {
+            "original_text": "",
+            "normalized_text": "",
+            "sheng_words_detected": [],
+            "detected_language": "unknown",
+            "classification": "benign",
+            "confidence": 0.5,
+            "threat_probabilities": {"benign": 0.7, "suspicious": 0.2, "threat": 0.1, "civil_unrest": 0.0},
+            "sentiment_scores": {"positive": 0.3, "negative": 0.3, "neutral": 0.4},
+            "threat_keywords": [],
+            "risk_score": 0.2,
+            "context_enhancement": {},
+            "recommendations": ["Continue monitoring - system in degraded mode"],
+            "processing_metadata": {"method": "default_fallback"}
+        }
+    
+    def _analyze_multilingual_sentiment(self, text: str) -> Dict[str, float]:
+        """
+        Analyze sentiment using simple keyword-based approach
+        """
+        text_lower = text.lower()
+        
+        # Positive keywords (Swahili, English, Sheng)
+        positive_keywords = ["poa", "nzuri", "safi", "good", "great", "happy", "joy", "love", "beautiful", "amazing", "excellent"]
+        
+        # Negative keywords
+        negative_keywords = ["mbaya", "shida", "problem", "bad", "evil", "hate", "angry", "sad", "terrible", "awful", "dangerous"]
+        
+        positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
+        negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
+        
+        total_words = len(text_lower.split())
+        if total_words == 0:
+            return {"positive": 0.5, "negative": 0.5, "neutral": 0.0}
+        
+        positive_score = positive_count / total_words
+        negative_score = negative_count / total_words
+        neutral_score = 1.0 - positive_score - negative_score
+        
+        return {
+            "positive": max(0.0, positive_score),
+            "negative": max(0.0, negative_score),
+            "neutral": max(0.0, neutral_score)
+        }
+    
+    def _analyze_contextual_factors(self, text: str, context: str = None) -> Dict[str, any]:
+        """
+        Analyze contextual factors for East African relevance
+        """
+        text_lower = text.lower()
+        
+        # East African locations
+        east_african_locations = ["kenya", "nairobi", "mombasa", "kisumu", "nakuru", "eldoret", "tanzania", "uganda", "rwanda", "burundi"]
+        
+        # Political indicators
+        political_keywords = ["election", "government", "president", "politics", "vote", "democracy"]
+        
+        # Civil unrest indicators
+        civil_unrest_keywords = ["protest", "demonstration", "riot", "unrest", "maandamano", "ghasia"]
+        
+        # Calculate relevance scores
+        east_african_relevance = 0.0
+        political_context = False
+        civil_unrest_indicators = []
+        
+        # Check for East African relevance
+        for location in east_african_locations:
+            if location in text_lower:
+                east_african_relevance += 0.2
+        
+        east_african_relevance = min(1.0, east_african_relevance)
+        
+        # Check for political context
+        political_context = any(keyword in text_lower for keyword in political_keywords)
+        
+        # Check for civil unrest indicators
+        for keyword in civil_unrest_keywords:
+            if keyword in text_lower:
+                civil_unrest_indicators.append(keyword)
+        
+        return {
+            "east_african_relevance": east_african_relevance,
+            "political_context": political_context,
+            "civil_unrest_indicators": civil_unrest_indicators
+        }
     
     def _analyze_with_english_model(self, text: str, context: str = None) -> Dict[str, any]:
         """
-        Analyze using English BERT model
+        Fallback method - use rule-based approach for English text
         """
-        if not self.english_model or not self.english_tokenizer:
-            logger.warning("English model not loaded")
-            return self._get_default_response()
+        logger.info("Using rule-based English analysis (ML models disabled)")
         
-        try:
-            # Tokenize input
-            inputs = self.english_tokenizer(
-                text, 
-                return_tensors="pt", 
-                truncation=True, 
-                max_length=512,
-                padding=True
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            # Get predictions
-            with torch.no_grad():
-                outputs = self.english_model(**inputs)
-                probabilities = torch.softmax(outputs.logits, dim=-1)
-                probs = probabilities.cpu().numpy()[0]
-            
-            # Map to standard threat levels
-            threat_labels = ["benign", "suspicious", "threat"]
-            predictions = {
-                label: float(prob) for label, prob in zip(threat_labels, probs)
-            }
-            
-            # Get highest probability label
-            max_label = threat_labels[np.argmax(probs)]
-            confidence = float(np.max(probs))
-            
-            result = {
-                "text": text,
-                "original_language": "english",
-                "classification": max_label,
-                "confidence": confidence,
-                "threat_probabilities": predictions,
-                "sentiment_scores": self._analyze_multilingual_sentiment(text),
-                "threat_keywords": self._extract_multilingual_threat_keywords(text),
-                "risk_score": self._calculate_contextual_risk_score(predictions, context),
-                "recommendations": self._generate_culturally_aware_recommendations(max_label, confidence, text),
-                "sheng_words_detected": self._extract_sheng_words(text)
-            }
-            
-            logger.info(f"English-BERT analysis: {max_label} (confidence: {confidence})")
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error in English model analysis: {e}")
-            return self._get_default_response_response()
+        # Extract threat keywords
+        threat_keywords = self._extract_multilingual_threat_keywords(text)
+        
+        # Use rule-based classification
+        return self._rule_based_threat_classification(text, threat_keywords, "english")
     
-    def _analyze_east_african_context(self, text: str, context: str = None) -> Dict[str, any]:
+    def _normalize_swahili_sheng_text(self, text: str) -> str:
         """
-        Analyze text for East African social and political context
+        Normalize Sheng slang to standard Swahili/English
         """
-        context_score = 0.0
+        normalized = text.lower()
         
-        # Check for East African context indicators
-        east_african_indicators = [
-            "kenya", "nairobi", "mombasa", "kisumu", "nakuru",
-            "tanzania", "dar es salaam", "dodoma", "arusha",
-            "uganda", "kampala", "entebbe", "jinja",
-            "rwanda", "kigali", "burundi", "bujumbura"
-        ]
+        # Apply Sheng dictionary normalization
+        for sheng_word, standard_word in self.sheng_dictionary.items():
+            normalized = normalized.replace(sheng_word, standard_word)
         
+        return normalized
+    
+    def _extract_multilingual_threat_keywords(self, text: str) -> List[str]:
+        """
+        Extract threat keywords from multiple languages
+        """
         text_lower = text.lower()
-        for indicator in east_african_indicators:
-            if indicator in text_lower:
-                context_score += 0.2
+        found_keywords = []
         
-        # Check for political/social gathering terms
-        political_indicators = ["election", "vote", "campaign", "rally", "protest", "demonstration"]
-        for indicator in political_indicators:
-            if indicator in text_lower:
-                context_score += 0.3
+        # Combine all language threat keywords
+        all_threat_keywords = []
+        for lang_keywords in self.security_keywords.values():
+            all_threat_keywords.extend(lang_keywords)
         
-        # Check for civil unrest indicators
-        unrest_indicators = ["maandamano", "ghasia", "tatu", "mapinduzi"]
-        for indicator in unrest_indicators:
-            if indicator in text_lower:
-                context_score += 0.4
+        logger.info(f"Searching for threat keywords in: '{text_lower}'")
+        logger.info(f"Available threat keywords: {all_threat_keywords}")
         
-        return {
-            "east_african_relevance": min(1.0, context_score),
-            "political_context": any(indicator in text_lower for indicator in political_indicators),
-            "civil_unrest_indicators": [ind for ind in unrest_indicators if ind in text_lower]
-        }
+        for keyword in all_threat_keywords:
+            if keyword in text_lower:
+                found_keywords.append(keyword)
+                logger.info(f"Found threat keyword: '{keyword}'")
+        
+        logger.info(f"Total threat keywords found: {found_keywords}")
+        return found_keywords[:10]  # Return top 10
     
     def _analyze_multilingual_sentiment(self, text: str) -> Dict[str, float]:
         """
@@ -367,10 +466,15 @@ class ShengNLPProcessor:
         for lang_keywords in self.security_keywords.values():
             all_threat_keywords.extend(lang_keywords)
         
+        logger.info(f"Searching for threat keywords in: '{text_lower}'")
+        logger.info(f"Available threat keywords: {all_threat_keywords}")
+        
         for keyword in all_threat_keywords:
             if keyword in text_lower:
                 found_keywords.append(keyword)
+                logger.info(f"Found threat keyword: '{keyword}'")
         
+        logger.info(f"Total threat keywords found: {found_keywords}")
         return found_keywords[:10]  # Return top 10
     
     def _extract_sheng_words(self, text: str) -> List[str]:
@@ -389,27 +493,42 @@ class ShengNLPProcessor:
     def _calculate_contextual_risk_score(self, threat_probabilities: Dict[str, float], context: Dict[str, any] = None) -> float:
         """
         Calculate risk score with contextual enhancement
+        Improved logic for better differentiation between threat levels
         """
-        # Base risk calculation
-        weights = {"benign": 0.0, "suspicious": 0.5, "threat": 1.0, "civil_unrest": 0.8}
-        
-        # Add civil_unrest if available
-        if "civil_unrest" in threat_probabilities:
-            weights["civil_unrest"] = 0.8
+        # Base risk calculation with more differentiated weights
+        weights = {"benign": 0.0, "suspicious": 0.3, "threat": 0.8, "civil_unrest": 0.9}
         
         risk_score = sum(
             probability * weights.get(category, 0.0)
             for category, probability in threat_probabilities.items()
         )
         
-        # Apply context enhancement
-        if context and context.get("east_african_relevance", 0.0) > 0.5:
-            risk_score += 0.2  # Boost for East African relevance
+        # Check for threat keywords - this is crucial for proper classification
+        threat_keywords_found = context.get("threat_keywords", []) if context else []
+        has_threat_keywords = len(threat_keywords_found) > 0
+        
+        # Apply context enhancement only if threat keywords are found
+        if context:
+            # East African relevance boost (only for actual threats)
+            if context.get("east_african_relevance", 0.0) > 0.5 and has_threat_keywords:
+                risk_score += 0.15
+            
+            # Political context boost (only for actual threats)
+            if context.get("political_context", False) and has_threat_keywords:
+                risk_score += 0.2
+            
+            # Civil unrest indicators boost
+            if context.get("civil_unrest_indicators") and len(context.get("civil_unrest_indicators")) > 0:
+                risk_score += 0.25
         
         # Apply emergency context boost
         if context and any(keyword in str(context.get("emergency_keywords", "")).lower() 
                    for keyword in ["emergency", "urgent", "immediate", "critical"]):
             risk_score += 0.3
+        
+        # If no threat keywords found, significantly reduce risk score
+        if not has_threat_keywords:
+            risk_score = min(risk_score, 0.3)  # Cap at 30% for non-threat content
         
         return min(1.0, risk_score)
     

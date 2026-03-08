@@ -29,20 +29,17 @@ dependencies {
     // Spring Boot Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
-    // Kafka
+    // Kafka for receiving threat intelligence
     implementation 'org.springframework.kafka:spring-kafka'
     
-    // MongoDB for unstructured data
+    // MongoDB for intelligence storage
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
     
-    // Redis for caching and real-time data
+    // Redis for real-time intelligence caching
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     
     // Elasticsearch for search capabilities
     implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
-    
-    // Eureka Client (disabled for local development)
-    // implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     
     // HTTP Client for AI Engine communication
     implementation 'org.springframework.boot:spring-boot-starter-webflux'

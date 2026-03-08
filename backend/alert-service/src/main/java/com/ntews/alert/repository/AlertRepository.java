@@ -28,7 +28,7 @@ public interface AlertRepository extends MongoRepository<Alert, String> {
             String severity, String status, LocalDateTime start, LocalDateTime end, Pageable pageable);
     
     @Query("{ 'status': { $ne: 'resolved' }, 'status': { $ne: 'closed' } }")
-    List<Alert> findActiveAlerts();
+    Page<Alert> findActiveAlerts(Pageable pageable);
     
     @Query("{ 'status': 'active' }")
     List<Alert> findActiveAlertsOnly();
