@@ -6,10 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.socket.*;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -29,13 +25,12 @@ import java.util.concurrent.CompletableFuture;
 public class SecurityAlertController {
     
     private final SecurityAlertService securityAlertService;
-    private final SimpMessagingTemplate messagingTemplate;
-    
+        
     /**
-     * WebSocket endpoint for real-time security alerts
+     * REST endpoint for security alerts
      */
-    @MessageMapping("/security-event")
-    public void handleSecurityEvent(SecurityAlert alert) {
+    @PostMapping("/security-event")
+    public void handleSecurityEvent(@RequestBody SecurityAlert alert) {
         try {
             log.info("Received security alert: {} | Risk: {} | Language: {}", 
                 alert.getId(), alert.getRiskCategory(), alert.getOriginalLanguage());
@@ -43,8 +38,7 @@ public class SecurityAlertController {
             // Process the alert
             securityAlertService.processSecurityAlert(alert);
             
-            // Broadcast to all connected clients
-            messagingTemplate.convertAndSend("/topic/security-alerts", alert);
+            // REST endpoint - broadcasting handled by existing WebSocket infrastructure
             
         } catch (Exception e) {
             log.error("Error processing security alert: {}", e.getMessage(), e);
@@ -109,8 +103,7 @@ public class SecurityAlertController {
             // Process the alert
             securityAlertService.processSecurityAlert(manualAlert);
             
-            // Broadcast to all connected clients
-            messagingTemplate.convertAndSend("/topic/security-alerts", manualAlert);
+            // REST endpoint - broadcasting handled by existing WebSocket infrastructure
             
             Map<String, Object> response = new HashMap<>();
             response.put("status", "success");

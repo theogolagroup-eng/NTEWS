@@ -1,0 +1,104 @@
+# Bluesky Jetstream Configuration - WebSocket Only Architecture
+# Optimized for 8GB laptop deployment
+
+bluesky:
+  jetstream-url: wss://jetstream1.us-west.bsky.network/subscribe
+  backup-jetstream-url: wss://jetstream2.us-east.bsky.network/subscribe
+  
+  # Connection settings
+  connect-timeout-seconds: 30
+  ping-interval-seconds: 30
+  read-timeout-seconds: 0  # No timeout for streaming
+  reconnect-delay-seconds: 5
+  
+  # Collections to monitor
+  collections:
+    - app.bsky.feed.post
+    - app.bsky.feed.like
+    - app.bsky.feed.repost
+    - app.bsky.graph.follow
+  
+  # Multi-language threat keywords
+  threat-keywords:
+    # Swahili/Sheng
+    - maandamano
+    - karao
+    - wanakambo
+    - tishio
+    - usalama
+    # English
+    - protest
+    - unrest
+    - violence
+    - threat
+    - danger
+    - flood
+    - disaster
+    - emergency
+    - security
+    - attack
+  
+  # Target languages for filtering
+  target-languages:
+    - en  # English
+    - sw  # Swahili
+    - ke  # Kenya (mixed)
+  
+  # Memory optimization for 8GB laptop
+  max-cache-size: 10000
+  metrics-status-interval-minutes: 5
+  cleanup-interval-hours: 1
+  data-retention-hours: 6
+  
+  # NTEWS Service WebSocket endpoints
+  services:
+    alert-service:
+      url: ws://localhost:8081/ws/alerts
+      enabled: true
+    prediction-service:
+      url: ws://localhost:8082/ws/predictions
+      enabled: true
+    intelligence-service:
+      url: ws://localhost:8083/ws/intelligence
+      enabled: true
+  
+  # Performance tuning
+  enable-metrics-aggregation: true
+  enable-keyword-filtering: true
+  enable-language-filtering: true
+  batch-size: 100
+  max-concurrent-connections: 3
+  
+  # Monitoring
+  enable-detailed-logging: false
+  log-sample-rate: 100
+  enable-metrics-reporting: true
+
+# Spring Boot optimizations for 8GB laptop
+spring:
+  jvm:
+    # Limit JVM heap to 1GB to leave room for Python AI models
+    heap-size: 1g
+
+# Logging configuration
+logging:
+  level:
+    com.ntews.ingestion.service.BlueskyJetstreamService: INFO
+    com.ntews.ingestion.service.BlueskyMetricsAggregator: INFO
+    com.ntews.ingestion.client.ServiceWebSocketClient: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management endpoints for monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true

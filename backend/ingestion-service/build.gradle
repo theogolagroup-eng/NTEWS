@@ -45,15 +45,12 @@ dependencies {
     // Jakarta annotations for @PostConstruct (Spring Boot 3.x)
     implementation 'jakarta.annotation:jakarta.annotation-api'
     
-    // Kafka
-    implementation 'org.springframework.kafka:spring-kafka'
-    
-    // Redis for caching
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // WebSocket client for Bluesky Jetstream and service communication
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
 
 dependencyManagement {

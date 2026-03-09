@@ -1,13 +1,12 @@
 package com.ntews.prediction.config;
 
-import com.ntews.alert.model.Alert;
+import com.ntews.prediction.model.ThreatPrediction;
 import com.ntews.prediction.repository.ThreatPredictionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -19,7 +18,6 @@ import java.util.List;
 public class DataInitializer {
     
     private final ThreatPredictionRepository threatPredictionRepository;
-    private final MongoTemplate mongoTemplate;
     
     @Bean
     public CommandLineRunner initPredictionData() {
@@ -32,74 +30,6 @@ public class DataInitializer {
                 log.info("🗑️  Clearing {} existing predictions for fresh initialization", deletedCount);
                 threatPredictionRepository.deleteAll();
             }
-            
-            // Create prediction data based on Alert patterns
-            List<Alert> sampleAlerts = Arrays.asList(
-                // Sample alerts for prediction training
-                Alert.builder()
-                    .id("pred-sample-001")
-                    .title("Sample Protest Alert")
-                    .description("Sample alert for prediction model training")
-                    .severity(Alert.Severity.HIGH)
-                    .priority(Alert.Priority.HIGH)
-                    .status(Alert.AlertStatus.ACTIVE)
-                    .category("Social Media Threat")
-                    .location(Alert.LocationInfo.builder()
-                        .latitude("-1.2844")
-                        .longitude("36.8236")
-                        .city("Nairobi")
-                        .region("Nairobi County")
-                        .country("Kenya")
-                        .address("Sample Location")
-                        .build())
-                    .source("Sample Source")
-                    .confidence(0.85)
-                    .aiConfidence(0.90)
-                    .createdAt(LocalDateTime.now().minusHours(1))
-                    .updatedAt(LocalDateTime.now().minusHours(1))
-                    .build(),
-                    
-                Alert.builder()
-                    .id("pred-sample-002")
-                    .title("Sample Security Alert")
-                    .description("Sample security alert for prediction model training")
-                    .severity(Alert.Severity.MEDIUM)
-                    .priority(Alert.Priority.NORMAL)
-                    .status(Alert.AlertStatus.ACTIVE)
-                    .category("Infrastructure Security")
-                    .location(Alert.LocationInfo.builder()
-                        .latitude("-1.2921")
-                        .longitude("36.8219")
-                        .city("Nairobi")
-                        .region("Nairobi County")
-                        .country("Kenya")
-                        .address("Sample Location 2")
-                        .build())
-                    .source("Sample Source 2")
-                    .confidence(0.75)
-                    .aiConfidence(0.80)
-                    .createdAt(LocalDateTime.now().minusHours(2))
-                    .updatedAt(LocalDateTime.now().minusHours(2))
-                    .build()
-            );
-            
-            // Save sample alerts for prediction service to use
-            try {
-                // Save to alerts collection for prediction service access
-                mongoTemplate.saveAll(sampleAlerts, "alerts");
-                log.info("✅ Saved {} sample alerts for prediction service training", sampleAlerts.size());
-            } catch (Exception e) {
-                log.error("❌ Error saving sample alerts: {}", e.getMessage());
-            }
-            
-            log.info("🔮 Prediction service initialization complete");
-            log.info("📊 Sample data ready for prediction model training");
-            return null;
-        };
-    }
-}
-            threatPredictionRepository.deleteAll();
-            log.info("🗑️  Deleted {} existing threat predictions", deletedCount);
             
             // Create multilingual threat predictions
             List<ThreatPrediction> predictions = Arrays.asList(
@@ -176,7 +106,7 @@ public class DataInitializer {
                     .dataSource("AI Event Analysis")
                     .languageContext("swahili-english")
                     .shengKeywords("poa, mambo mzuri")
-                    .swahikiKeywords("michezo, jumuiya, amani")
+                    .swahiliKeywords("michezo, jumuiya, amani")
                     .englishKeywords("sports, community, peaceful")
                     .createdAt(LocalDateTime.now().minusHours(1))
                     .expiresAt(LocalDateTime.now().plusDays(2))
@@ -196,7 +126,7 @@ public class DataInitializer {
                     .dataSource("AI Network Traffic Analysis")
                     .languageContext("english")
                     .shengKeywords("")
-                    .swahikiKeywords("mtandao, kushambuliwa")
+                    .swahiliKeywords("mtandao, kushambuliwa")
                     .englishKeywords("cyber, attack, infrastructure")
                     .createdAt(LocalDateTime.now().minusHours(3))
                     .expiresAt(LocalDateTime.now().plusDays(2))

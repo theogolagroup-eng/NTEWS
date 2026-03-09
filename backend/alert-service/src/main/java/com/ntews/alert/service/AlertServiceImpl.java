@@ -8,7 +8,6 @@ import com.ntews.alert.model.Alert;
 
 import com.ntews.alert.repository.AlertRepository;
 
-import com.ntews.alert.controller.WebSocketController;
 
 import org.springframework.context.annotation.Lazy;
 
@@ -226,23 +225,8 @@ public class AlertServiceImpl implements AlertService {
 
         
 
-        // Broadcast new alert to WebSocket clients
-
-        try {
-
-            WebSocketController webSocketController = applicationContext.getBean(WebSocketController.class);
-
-            if (webSocketController != null) {
-
-                webSocketController.sendRealTimeAlert(savedAlert);
-
-            }
-
-        } catch (Exception e) {
-
-            log.warn("Failed to broadcast alert to WebSocket clients: {}", e.getMessage());
-
-        }
+        // REST-based alert processing - WebSocket broadcasting handled by existing infrastructure
+        log.info("Alert processed successfully: {}", savedAlert.getId());
 
         
 

@@ -35,6 +35,9 @@ dependencies {
     // MongoDB for intelligence storage
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
     
+    // HTTP client for REST communication
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    
     // Redis for real-time intelligence caching
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     

@@ -29,14 +29,13 @@ dependencies {
     // Spring Boot Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
     
-    // WebSocket for real-time alerts (with STOMP support)
-    implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation 'org.springframework:spring-messaging'
+    // HTTP client for REST communication
+    implementation 'org.springframework.boot:spring-boot-starter-web'
     
     // Kafka for receiving threat intelligence
     implementation 'org.springframework.kafka:spring-kafka'
     
-    // MongoDB for alert storage
+    // MongoDB for storing predictions and Alert data access
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
     
     // Redis for real-time alert caching

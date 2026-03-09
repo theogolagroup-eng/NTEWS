@@ -1,0 +1,8 @@
+rootProject.name = 'ntews-backend'
+
+include 'alert-service'
+include 'prediction-service'
+include 'api-gateway'
+include 'auth-service'
+include 'ingestion-service'
+include 'intelligence-service'
