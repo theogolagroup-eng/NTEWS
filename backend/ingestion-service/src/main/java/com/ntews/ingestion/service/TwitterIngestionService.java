@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ntews.ingestion.document.TwitterStreamDocument;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -22,9 +24,11 @@ import java.util.Map;
  * Processes Sheng and English security keywords for East African context
  * Saves processed data to MongoDB with AI Engine analysis
  */
-@Service
-@Slf4j
+// @Service - DISABLED to save 8GB RAM resources
+// @Slf4j
 public class TwitterIngestionService {
+
+    private static final Logger log = LoggerFactory.getLogger(TwitterIngestionService.class);
 
     private final String BEARER_TOKEN;
     private final WebClient twitterWebClient;

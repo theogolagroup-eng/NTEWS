@@ -61,9 +61,9 @@ public class ServiceWebSocketClient {
                 ALERT_SERVICE_URL, entity, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("📤 Sent post to Alert Service: {}", post.getId());
+                log.info("📤 Sent post to Alert Service: {}", post.id);
             } else {
-                log.error("❌ Error sending to Alert Service: {} - {}", post.getId(), response.getStatusCode());
+                log.error("❌ Error sending to Alert Service: {} - {}", post.id, response.getStatusCode());
             }
         } catch (Exception e) {
             log.error("❌ Error sending to Alert Service: {}", e.getMessage());
@@ -84,9 +84,9 @@ public class ServiceWebSocketClient {
                 PREDICTION_SERVICE_URL, entity, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("📤 Sent post to Prediction Service: {}", post.getId());
+                log.info("📤 Sent post to Prediction Service: {}", post.id);
             } else {
-                log.error("❌ Error sending to Prediction Service: {} - {}", post.getId(), response.getStatusCode());
+                log.error("❌ Error sending to Prediction Service: {} - {}", post.id, response.getStatusCode());
             }
         } catch (Exception e) {
             log.error("❌ Error sending to Prediction Service: {}", e.getMessage());
@@ -107,9 +107,9 @@ public class ServiceWebSocketClient {
                 INTELLIGENCE_SERVICE_URL, entity, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("📤 Sent post to Intelligence Service: {}", post.getId());
+                log.info("📤 Sent post to Intelligence Service: {}", post.id);
             } else {
-                log.error("❌ Error sending to Intelligence Service: {} - {}", post.getId(), response.getStatusCode());
+                log.error("❌ Error sending to Intelligence Service: {} - {}", post.id, response.getStatusCode());
             }
         } catch (Exception e) {
             log.error("❌ Error sending to Intelligence Service: {}", e.getMessage());
@@ -120,7 +120,7 @@ public class ServiceWebSocketClient {
      * Send to all connected services
      */
     public void sendToAllServices(UnifiedPost post) {
-        log.info("📡 Broadcasting post {} to all NTEWS services", post.getId());
+        log.info("📡 Broadcasting post {} to all NTEWS services", post.id);
         
         sendToAlertService(post);
         sendToPredictionService(post);

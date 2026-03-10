@@ -4,10 +4,12 @@ import com.ntews.ingestion.model.UnifiedPost;
 import com.ntews.ingestion.service.BlueskyJetstreamService;
 import com.ntews.ingestion.service.BlueskyMetricsAggregator;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,9 +20,10 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/bluesky")
 @RequiredArgsConstructor
-@Slf4j
 public class BlueskyController {
 
+    private static final Logger log = LoggerFactory.getLogger(BlueskyController.class);
+    
     private final BlueskyJetstreamService jetstreamService;
     private final BlueskyMetricsAggregator metricsAggregator;
 
@@ -46,6 +49,12 @@ public class BlueskyController {
             @RequestParam(defaultValue = "10") int limit) {
         try {
             List<Map<String, Object>> topPosts = metricsAggregator.getTopPostsByEngagement(limit);
+            
+            // Null safety check - always return valid JSON
+            if (topPosts == null) {
+                topPosts = new ArrayList<>();
+            }
+            
             return ResponseEntity.ok(topPosts);
         } catch (Exception e) {
             log.error("Error getting top posts: {}", e.getMessage());
@@ -61,6 +70,12 @@ public class BlueskyController {
             @RequestParam(defaultValue = "10") int limit) {
         try {
             List<Map<String, Object>> trendingPosts = metricsAggregator.getTrendingPosts(limit);
+            
+            // Null safety check - always return valid JSON
+            if (trendingPosts == null) {
+                trendingPosts = new ArrayList<>();
+            }
+            
             return ResponseEntity.ok(trendingPosts);
         } catch (Exception e) {
             log.error("Error getting trending posts: {}", e.getMessage());

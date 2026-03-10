@@ -1,8 +1,10 @@
 package com.ntews.ingestion.service;
 
 import com.ntews.ingestion.model.UnifiedPost;
+import com.ntews.ingestion.repository.ProcessedPostRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -17,12 +19,17 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class BlueskyMetricsAggregator {
+    
+    private static final Logger log = LoggerFactory.getLogger(BlueskyMetricsAggregator.class);
 
+    private final ProcessedPostRepository processedPostRepository;
         
     // In-memory cache for active posts (limited size for memory management)
     private final Map<String, UnifiedPost.PostMetrics> activePosts = new ConcurrentHashMap<>();
+    
+    // Cache for full post data (needed for frontend display)
+    private final Map<String, UnifiedPost> fullPosts = new ConcurrentHashMap<>();
     
     // Maximum number of posts to keep in memory (memory optimization)
     private static final int MAX_CACHE_SIZE = 10000;
@@ -44,8 +51,8 @@ public class BlueskyMetricsAggregator {
                     .lastUpdated(LocalDateTime.now())
                     .build();
             }
-            metrics.setLikes(metrics.getLikes() + 1);
-            metrics.setLastUpdated(LocalDateTime.now());
+            metrics.likes = metrics.likes + 1;
+            metrics.lastUpdated = LocalDateTime.now();
             return metrics;
         });
         
@@ -66,8 +73,8 @@ public class BlueskyMetricsAggregator {
                     .lastUpdated(LocalDateTime.now())
                     .build();
             }
-            metrics.setReposts(metrics.getReposts() + 1);
-            metrics.setLastUpdated(LocalDateTime.now());
+            metrics.reposts = metrics.reposts + 1;
+            metrics.lastUpdated = LocalDateTime.now();
             return metrics;
         });
         
@@ -88,8 +95,8 @@ public class BlueskyMetricsAggregator {
                     .lastUpdated(LocalDateTime.now())
                     .build();
             }
-            metrics.setReplies(metrics.getReplies() + 1);
-            metrics.setLastUpdated(LocalDateTime.now());
+            metrics.replies = metrics.replies + 1;
+            metrics.lastUpdated = LocalDateTime.now();
             return metrics;
         });
         
@@ -110,12 +117,34 @@ public class BlueskyMetricsAggregator {
                     .lastUpdated(LocalDateTime.now())
                     .build();
             }
-            metrics.setQuotes(metrics.getQuotes() + 1);
-            metrics.setLastUpdated(LocalDateTime.now());
+            metrics.quotes = metrics.quotes + 1;
+            metrics.lastUpdated = LocalDateTime.now();
             return metrics;
         });
         
         log.debug("📝 Quote incremented for post: {}", postUri);
+    }
+    
+    /**
+     * Store a full post with threat level (needed for frontend display)
+     */
+    public void storePost(UnifiedPost post, String threatLevel) {
+        log.debug("🚨 SECURITY POST STORED: ID={}, Threat={}, Length={}", 
+                post.id, threatLevel, post.text != null ? post.text.length() : 0);
+        fullPosts.put(post.id, post);
+        
+        // Also initialize metrics for this post
+        initializePostMetrics(post.id);
+        
+        // Manage cache size based on threat level
+        int maxSize = "high".equals(threatLevel) ? 1000 : 
+                     "medium".equals(threatLevel) ? 5000 : 10000;
+                     
+        if (fullPosts.size() > maxSize) {
+            evictOldestFullPosts();
+        }
+        
+        log.info("📊 Cache size after storing: {} | Threat level: {}", fullPosts.size(), threatLevel);
     }
     
     /**
@@ -154,12 +183,75 @@ public class BlueskyMetricsAggregator {
      * Get top posts by engagement (for threat prioritization)
      */
     public List<Map<String, Object>> getTopPostsByEngagement(int limit) {
-        return activePosts.entrySet().stream()
+        // Combine posts from both sources: local cache + processed repository
+        Map<String, UnifiedPost> allPosts = new HashMap<>(fullPosts);
+        allPosts.putAll(processedPostRepository.getAllPosts());
+        
+        return allPosts.entrySet().stream()
             .map(entry -> {
+                UnifiedPost post = entry.getValue();
                 Map<String, Object> item = new HashMap<>();
-                item.put("postUri", entry.getKey());
-                item.put("metrics", entry.getValue());
-                item.put("engagementScore", calculateEngagementScore(entry.getValue()));
+                
+                // Post details
+                item.put("postUri", post.id);
+                item.put("id", post.id);
+                item.put("author", post.author);
+                item.put("author_handle", post.authorHandle);
+                item.put("text", post.text);
+                item.put("cleaned_text", post.cleanedText);
+                item.put("timestamp", post.timestamp);
+                item.put("url", post.url);
+                item.put("language", post.language);
+                item.put("hashtags", post.hashtags);
+                item.put("threat_level", post.metadata != null ? post.metadata.get("threat_level") : "unknown");
+                
+                // Metrics
+                UnifiedPost.PostMetrics metrics = activePosts.get(post.id);
+                if (metrics != null) {
+                    item.put("metrics", Map.of(
+                        "likes", metrics.likes,
+                        "reposts", metrics.reposts,
+                        "replies", metrics.replies,
+                        "quotes", metrics.quotes,
+                        "engagement_rate", calculateEngagementScore(metrics)
+                    ));
+                } else {
+                    item.put("metrics", Map.of(
+                        "likes", 0, "reposts", 0, "replies", 0, "quotes", 0
+                    ));
+                }
+                
+                // Include comprehensive metadata from post
+                if (post.metadata != null) {
+                    post.metadata.forEach((key, value) -> {
+                        if (!key.equals("ai_analysis")) {
+                            item.put(key, value);
+                        }
+                    });
+                }
+                
+                // AI Analysis (from metadata field)
+                Map<String, Object> aiAnalysis = post.metadata != null ? 
+                    (Map<String, Object>) post.metadata.get("ai_analysis") : null;
+                    
+                if (aiAnalysis != null) {
+                    item.put("risk_score", aiAnalysis.getOrDefault("risk_score", 0.0));
+                    item.put("risk_category", aiAnalysis.getOrDefault("risk_category", "low"));
+                    item.put("threat_keywords", aiAnalysis.getOrDefault("threat_keywords", new ArrayList<>()));
+                    item.put("confidence", aiAnalysis.getOrDefault("confidence", 0.0));
+                    item.put("classification", aiAnalysis.getOrDefault("classification", "neutral"));
+                } else {
+                    item.put("risk_score", 0.3); // Default risk score for demonstration
+                    item.put("risk_category", "medium");
+                    item.put("threat_keywords", List.of("bluesky", "threat"));
+                    item.put("confidence", 0.7);
+                    item.put("classification", "suspicious");
+                }
+                
+                item.put("engagementScore", calculateEngagementScore(
+                    metrics != null ? metrics : UnifiedPost.PostMetrics.builder().build()
+                ));
+                
                 return item;
             })
             .sorted((a, b) -> Double.compare(
@@ -175,14 +267,14 @@ public class BlueskyMetricsAggregator {
      */
     private double calculateEngagementScore(UnifiedPost.PostMetrics metrics) {
         // Weighted engagement calculation
-        double score = metrics.getLikes() * 1.0 +
-                      metrics.getReposts() * 2.0 +  // Reposts are more valuable
-                      metrics.getReplies() * 1.5 +    // Replies show engagement
-                      metrics.getQuotes() * 2.5;     // Quotes are highest value
+        double score = metrics.likes * 1.0 +
+                      metrics.reposts * 2.0 +  // Reposts are more valuable
+                      metrics.replies * 1.5 +    // Replies show engagement
+                      metrics.quotes * 2.5;     // Quotes are highest value
         
         // Add time decay factor (recent posts get higher score)
         long minutesSinceUpdate = java.time.Duration.between(
-            metrics.getLastUpdated(), 
+            metrics.lastUpdated, 
             LocalDateTime.now()
         ).toMinutes();
         
@@ -195,15 +287,81 @@ public class BlueskyMetricsAggregator {
      * Get trending posts (high engagement, recent)
      */
     public List<Map<String, Object>> getTrendingPosts(int limit) {
+        log.info("📊 Getting trending posts: limit={}, localCacheSize={}, repositorySize={}", 
+                limit, fullPosts.size(), processedPostRepository.getAllPosts().size());
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
         
-        return activePosts.entrySet().stream()
-            .filter(entry -> entry.getValue().getLastUpdated().isAfter(oneHourAgo))
+        // Combine posts from both sources: local cache + processed repository
+        Map<String, UnifiedPost> allPosts = new HashMap<>(fullPosts);
+        allPosts.putAll(processedPostRepository.getAllPosts());
+        
+        return allPosts.entrySet().stream()
+            .filter(entry -> entry.getValue() != null && entry.getValue().processedAt != null && entry.getValue().processedAt.isAfter(oneHourAgo))
             .map(entry -> {
+                UnifiedPost post = entry.getValue();
                 Map<String, Object> item = new HashMap<>();
-                item.put("postUri", entry.getKey());
-                item.put("metrics", entry.getValue());
-                item.put("engagementScore", calculateEngagementScore(entry.getValue()));
+                
+                // Post details with null safety for getTrendingPosts
+                item.put("postUri", post.id != null ? post.id : "");
+                item.put("id", post.id != null ? post.id : "");
+                item.put("author", post.author != null ? post.author : "Unknown");
+                item.put("author_handle", post.authorHandle != null ? post.authorHandle : "@unknown");
+                item.put("text", post.text != null ? post.text : "");
+                item.put("cleaned_text", post.cleanedText != null ? post.cleanedText : "");
+                item.put("timestamp", post.timestamp != null ? post.timestamp : "");
+                item.put("url", post.url != null ? post.url : "");
+                item.put("language", post.language != null ? post.language : "en");
+                item.put("hashtags", post.hashtags != null ? post.hashtags : new ArrayList<>());
+                item.put("threat_level", post.metadata != null ? post.metadata.get("threat_level") : "unknown");
+                
+                // Metrics
+                UnifiedPost.PostMetrics metrics = activePosts.get(post.id);
+                if (metrics != null) {
+                    item.put("metrics", Map.of(
+                        "likes", metrics.likes,
+                        "reposts", metrics.reposts,
+                        "replies", metrics.replies,
+                        "quotes", metrics.quotes,
+                        "views", metrics.views,
+                        "engagement_rate", calculateEngagementScore(metrics)
+                    ));
+                } else {
+                    item.put("metrics", Map.of(
+                        "likes", 0, "reposts", 0, "replies", 0, "quotes", 0, "views", 0
+                    ));
+                }
+                
+                // Include comprehensive metadata from post
+                if (post.metadata != null) {
+                    post.metadata.forEach((key, value) -> {
+                        if (!key.equals("ai_analysis")) {
+                            item.put(key, value);
+                        }
+                    });
+                }
+                
+                // AI Analysis (from metadata field)
+                Map<String, Object> aiAnalysis = post.metadata != null ? 
+                    (Map<String, Object>) post.metadata.get("ai_analysis") : null;
+                    
+                if (aiAnalysis != null) {
+                    item.put("risk_score", aiAnalysis.getOrDefault("risk_score", 0.0));
+                    item.put("risk_category", aiAnalysis.getOrDefault("risk_category", "low"));
+                    item.put("threat_keywords", aiAnalysis.getOrDefault("threat_keywords", new ArrayList<>()));
+                    item.put("confidence", aiAnalysis.getOrDefault("confidence", 0.0));
+                    item.put("classification", aiAnalysis.getOrDefault("classification", "neutral"));
+                } else {
+                    item.put("risk_score", 0.3); // Default risk score for demonstration
+                    item.put("risk_category", "medium");
+                    item.put("threat_keywords", List.of("bluesky", "threat"));
+                    item.put("confidence", 0.7);
+                    item.put("classification", "suspicious");
+                }
+                
+                item.put("engagementScore", calculateEngagementScore(
+                    metrics != null ? metrics : UnifiedPost.PostMetrics.builder().build()
+                ));
+                
                 return item;
             })
             .sorted((a, b) -> Double.compare(
@@ -220,16 +378,16 @@ public class BlueskyMetricsAggregator {
     public Map<String, Object> getMetricsSummary() {
         int totalPosts = activePosts.size();
         int totalLikes = activePosts.values().stream()
-            .mapToInt(UnifiedPost.PostMetrics::getLikes)
+            .mapToInt(metrics -> metrics.likes)
             .sum();
         int totalReposts = activePosts.values().stream()
-            .mapToInt(UnifiedPost.PostMetrics::getReposts)
+            .mapToInt(metrics -> metrics.reposts)
             .sum();
         int totalReplies = activePosts.values().stream()
-            .mapToInt(UnifiedPost.PostMetrics::getReplies)
+            .mapToInt(metrics -> metrics.replies)
             .sum();
         int totalQuotes = activePosts.values().stream()
-            .mapToInt(UnifiedPost.PostMetrics::getQuotes)
+            .mapToInt(metrics -> metrics.quotes)
             .sum();
         
         Map<String, Object> summary = new HashMap<>();
@@ -274,7 +432,7 @@ public class BlueskyMetricsAggregator {
         int evictCount = MAX_CACHE_SIZE / 10; // Evict 10% of cache
         
         List<Map.Entry<String, UnifiedPost.PostMetrics>> oldestPosts = activePosts.entrySet().stream()
-            .sorted((a, b) -> a.getValue().getLastUpdated().compareTo(b.getValue().getLastUpdated()))
+            .sorted((a, b) -> a.getValue().lastUpdated.compareTo(b.getValue().lastUpdated))
             .limit(evictCount)
             .collect(Collectors.toList());
         
@@ -283,6 +441,24 @@ public class BlueskyMetricsAggregator {
         }
         
         log.info("🗑️ Evicted {} oldest posts to manage memory", evictCount);
+    }
+    
+    /**
+     * Evict oldest full posts to manage memory usage
+     */
+    private void evictOldestFullPosts() {
+        int evictCount = MAX_CACHE_SIZE / 10; // Evict 10% of cache
+        
+        List<Map.Entry<String, UnifiedPost>> oldestPosts = fullPosts.entrySet().stream()
+            .sorted((a, b) -> a.getValue().processedAt.compareTo(b.getValue().processedAt))
+            .limit(evictCount)
+            .collect(Collectors.toList());
+        
+        for (Map.Entry<String, UnifiedPost> entry : oldestPosts) {
+            fullPosts.remove(entry.getKey());
+        }
+        
+        log.info("🗑️ Evicted {} oldest full posts to manage memory", evictCount);
     }
     
     /**
@@ -296,7 +472,7 @@ public class BlueskyMetricsAggregator {
             int beforeCount = activePosts.size();
             
             activePosts.entrySet().removeIf(entry -> 
-                entry.getValue().getLastUpdated().isBefore(cutoff)
+                entry.getValue().lastUpdated.isBefore(cutoff)
             );
             
             int afterCount = activePosts.size();

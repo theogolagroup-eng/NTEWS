@@ -9,62 +9,83 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+// TODO: Lombok disabled - manual implementation
 public class SocialMediaData {
-    private String id;
-    private String platform; // twitter, facebook, telegram, tiktok
-    private String postId;
-    private String userId;
-    private String username;
-    private String displayName;
-    private String content;
-    private String language;
+    public String id;
+    public String platform; // twitter, facebook, telegram, tiktok
+    public String postId;
+    public String userId;
+    public String username;
+    public String displayName;
+    public String content;
+    public String language;
     
     // Engagement metrics
-    private Integer likes;
-    private Integer shares;
-    private Integer comments;
-    private Integer views;
+    public Integer likes;
+    public Integer shares;
+    public Integer comments;
+    public Integer views;
     
     // Location data
-    private String location;
-    private String geoTagLatitude;
-    private String geoTagLongitude;
+    public String location;
+    public String geoTagLatitude;
+    public String geoTagLongitude;
     
     // Media content
-    private List<String> imageUrls;
-    private List<String> videoUrls;
-    private Boolean hasMedia;
+    public List<String> imageUrls;
+    public List<String> videoUrls;
+    public Boolean hasMedia;
     
     // Timestamps
-    private LocalDateTime postedAt;
-    private LocalDateTime ingestedAt;
+    public LocalDateTime postedAt;
+    public LocalDateTime ingestedAt;
     
     // Metadata
-    private Map<String, Object> metadata;
+    public Map<String, Object> metadata;
     
     // Sentiment analysis results (if pre-processed)
-    private Double sentimentScore;
+    public Double sentimentScore;
     
     // Sheng and security detection
-    private Boolean shengDetected;
-    private String securityRelevance;
-    private List<String> shengWordsDetected;
+    public Boolean shengDetected;
+    public String securityRelevance;
+    public List<String> shengWordsDetected;
     
     // Additional fields for Twitter streaming
-    private String authorId;
-    private String riskCategory;
-    private String sentimentLabel; // positive, negative, neutral
+    public String authorId;
+    public String riskCategory;
+    public String sentimentLabel; // positive, negative, neutral
     
     // Threat indicators
-    private List<String> threatKeywords;
-    private Double threatScore;
-    private Boolean isThreat;
+    public List<String> threatKeywords;
+    public Double threatScore;
+    public Boolean isThreat;
     
     // Verification status
-    private Boolean verified;
-    private Double verificationScore;
+    public Boolean verified;
+    public Double verificationScore;
+    
+    // Manual getter methods
+    public String getId() { return id; }
+    public String getPlatform() { return platform; }
+    public String getContent() { return content; }
+    public String getGeoTagLatitude() { return geoTagLatitude; }
+    public String getGeoTagLongitude() { return geoTagLongitude; }
+    public String getLocation() { return location; }
+    public LocalDateTime getPostedAt() { return postedAt; }
+    public Map<String, Object> getMetadata() { return metadata; }
+    public String getSecurityRelevance() { return securityRelevance; }
+    
+    // Manual setter methods
+    public void setId(String id) { this.id = id; }
+    public void setPlatform(String platform) { this.platform = platform; }
+    public void setContent(String content) { this.content = content; }
+    public void setPostedAt(LocalDateTime postedAt) { this.postedAt = postedAt; }
+    public void setGeoTagLatitude(String geoTagLatitude) { this.geoTagLatitude = geoTagLatitude; }
+    public void setGeoTagLongitude(String geoTagLongitude) { this.geoTagLongitude = geoTagLongitude; }
+    public void setLocation(String location) { this.location = location; }
+    public void setAuthorId(String authorId) { this.authorId = authorId; }
+    public void setLanguage(String language) { this.language = language; }
+    public void setShengDetected(Boolean shengDetected) { this.shengDetected = shengDetected; }
+    public void setSecurityRelevance(String securityRelevance) { this.securityRelevance = securityRelevance; }
 }
