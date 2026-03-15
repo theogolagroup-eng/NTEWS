@@ -71,13 +71,16 @@ spring:
 
         - id: ingestion-service
           uri: http://localhost:8084
-
           predicates:
-
             - Path=/api/ingestion/**
-
           filters:
+            - StripPrefix=0
 
+        - id: bluesky-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/bluesky/**
+          filters:
             - StripPrefix=0
 
         

@@ -101,6 +101,16 @@ export const API_ENDPOINTS = {
     START_BATCH: `${API_BASE_URL}/api/ingestion/start-batch`,
   },
   
+  // Bluesky Integration (through Ingestion Service)
+  BLUESKY: {
+    METRICS_SUMMARY: `${API_BASE_URL}/api/bluesky/metrics/summary`,
+    TRENDING_POSTS: `${API_BASE_URL}/api/bluesky/metrics/trending`,
+    TOP_POSTS: `${API_BASE_URL}/api/bluesky/metrics/top-posts`,
+    POST_METRICS: (postId: string) => `${API_BASE_URL}/api/bluesky/metrics/post/${postId}`,
+    CACHE_STATS: `${API_BASE_URL}/api/bluesky/cache/stats`,
+    HEALTH: `${API_BASE_URL}/api/bluesky/health`,
+  },
+  
   // AI Engine (Direct access through Gateway)
   AI_ENGINE: {
     HEALTH: `${API_BASE_URL}/health`,

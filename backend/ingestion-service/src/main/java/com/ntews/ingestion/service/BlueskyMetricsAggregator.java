@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 /**
  * Metrics aggregation service for Bluesky posts
@@ -203,21 +204,28 @@ public class BlueskyMetricsAggregator {
                 item.put("url", post.url);
                 item.put("language", post.language);
                 item.put("hashtags", post.hashtags);
-                item.put("threat_level", post.metadata != null ? post.metadata.get("threat_level") : "unknown");
                 
-                // Metrics
+                // Threat level object for frontend compatibility
+                Map<String, Object> threatLevel = Map.of(
+                    "score", post.metadata != null && post.metadata.containsKey("risk_score") ? post.metadata.get("risk_score") : 0,
+                    "category", post.metadata != null ? post.metadata.get("threat_level") : "low",
+                    "keywords", post.metadata != null && post.metadata.containsKey("threat_keywords") ? post.metadata.get("threat_keywords") : List.of()
+                );
+                item.put("threat_level", threatLevel);
+                
+                // Metrics with frontend field names
                 UnifiedPost.PostMetrics metrics = activePosts.get(post.id);
                 if (metrics != null) {
                     item.put("metrics", Map.of(
                         "likes", metrics.likes,
                         "reposts", metrics.reposts,
                         "replies", metrics.replies,
-                        "quotes", metrics.quotes,
-                        "engagement_rate", calculateEngagementScore(metrics)
+                        "shares", metrics.quotes, // Frontend expects 'shares' not 'quotes'
+                        "engagement_score", calculateEngagementScore(metrics) // Frontend expects 'engagement_score'
                     ));
                 } else {
                     item.put("metrics", Map.of(
-                        "likes", 0, "reposts", 0, "replies", 0, "quotes", 0
+                        "likes", 0, "reposts", 0, "replies", 0, "shares", 0, "engagement_score", 0
                     ));
                 }
                 
@@ -247,10 +255,6 @@ public class BlueskyMetricsAggregator {
                     item.put("confidence", 0.7);
                     item.put("classification", "suspicious");
                 }
-                
-                item.put("engagementScore", calculateEngagementScore(
-                    metrics != null ? metrics : UnifiedPost.PostMetrics.builder().build()
-                ));
                 
                 return item;
             })
@@ -284,24 +288,21 @@ public class BlueskyMetricsAggregator {
     }
     
     /**
-     * Get trending posts (high engagement, recent)
+     * Get trending posts (high engagement, recent) - FIXED VERSION
      */
     public List<Map<String, Object>> getTrendingPosts(int limit) {
-        log.info("📊 Getting trending posts: limit={}, localCacheSize={}, repositorySize={}", 
-                limit, fullPosts.size(), processedPostRepository.getAllPosts().size());
+        log.info("📊 Getting trending posts: limit={}, localCacheSize={}", 
+                limit, fullPosts.size());
         LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
         
-        // Combine posts from both sources: local cache + processed repository
-        Map<String, UnifiedPost> allPosts = new HashMap<>(fullPosts);
-        allPosts.putAll(processedPostRepository.getAllPosts());
-        
-        return allPosts.entrySet().stream()
+        return fullPosts.entrySet().stream()
             .filter(entry -> entry.getValue() != null && entry.getValue().processedAt != null && entry.getValue().processedAt.isAfter(oneHourAgo))
+            .limit(limit)
             .map(entry -> {
                 UnifiedPost post = entry.getValue();
                 Map<String, Object> item = new HashMap<>();
                 
-                // Post details with null safety for getTrendingPosts
+                // Post details with null safety
                 item.put("postUri", post.id != null ? post.id : "");
                 item.put("id", post.id != null ? post.id : "");
                 item.put("author", post.author != null ? post.author : "Unknown");
@@ -312,61 +313,46 @@ public class BlueskyMetricsAggregator {
                 item.put("url", post.url != null ? post.url : "");
                 item.put("language", post.language != null ? post.language : "en");
                 item.put("hashtags", post.hashtags != null ? post.hashtags : new ArrayList<>());
-                item.put("threat_level", post.metadata != null ? post.metadata.get("threat_level") : "unknown");
                 
-                // Metrics
-                UnifiedPost.PostMetrics metrics = activePosts.get(post.id);
-                if (metrics != null) {
-                    item.put("metrics", Map.of(
-                        "likes", metrics.likes,
-                        "reposts", metrics.reposts,
-                        "replies", metrics.replies,
-                        "quotes", metrics.quotes,
-                        "views", metrics.views,
-                        "engagement_rate", calculateEngagementScore(metrics)
-                    ));
-                } else {
-                    item.put("metrics", Map.of(
-                        "likes", 0, "reposts", 0, "replies", 0, "quotes", 0, "views", 0
-                    ));
-                }
-                
-                // Include comprehensive metadata from post
+                // Simple threat level object
+                Map<String, Object> threatLevel = new HashMap<>();
                 if (post.metadata != null) {
-                    post.metadata.forEach((key, value) -> {
-                        if (!key.equals("ai_analysis")) {
-                            item.put(key, value);
-                        }
-                    });
-                }
-                
-                // AI Analysis (from metadata field)
-                Map<String, Object> aiAnalysis = post.metadata != null ? 
-                    (Map<String, Object>) post.metadata.get("ai_analysis") : null;
-                    
-                if (aiAnalysis != null) {
-                    item.put("risk_score", aiAnalysis.getOrDefault("risk_score", 0.0));
-                    item.put("risk_category", aiAnalysis.getOrDefault("risk_category", "low"));
-                    item.put("threat_keywords", aiAnalysis.getOrDefault("threat_keywords", new ArrayList<>()));
-                    item.put("confidence", aiAnalysis.getOrDefault("confidence", 0.0));
-                    item.put("classification", aiAnalysis.getOrDefault("classification", "neutral"));
+                    threatLevel.put("score", post.metadata.containsKey("risk_score") ? post.metadata.get("risk_score") : 0);
+                    threatLevel.put("category", post.metadata.containsKey("threat_level") ? post.metadata.get("threat_level") : "low");
+                    threatLevel.put("keywords", post.metadata.containsKey("threat_keywords") ? post.metadata.get("threat_keywords") : new ArrayList<>());
                 } else {
-                    item.put("risk_score", 0.3); // Default risk score for demonstration
-                    item.put("risk_category", "medium");
-                    item.put("threat_keywords", List.of("bluesky", "threat"));
-                    item.put("confidence", 0.7);
-                    item.put("classification", "suspicious");
+                    threatLevel.put("score", 0);
+                    threatLevel.put("category", "low");
+                    threatLevel.put("keywords", new ArrayList<>());
                 }
+                item.put("threat_level", threatLevel);
                 
-                item.put("engagementScore", calculateEngagementScore(
-                    metrics != null ? metrics : UnifiedPost.PostMetrics.builder().build()
-                ));
+                // Simple metrics object
+                Map<String, Object> metrics = new HashMap<>();
+                UnifiedPost.PostMetrics postMetrics = activePosts.get(post.id);
+                if (postMetrics != null) {
+                    metrics.put("likes", postMetrics.likes);
+                    metrics.put("reposts", postMetrics.reposts);
+                    metrics.put("replies", postMetrics.replies);
+                    metrics.put("shares", postMetrics.quotes);
+                    metrics.put("engagement_score", calculateEngagementScore(postMetrics));
+                } else {
+                    metrics.put("likes", 0);
+                    metrics.put("reposts", 0);
+                    metrics.put("replies", 0);
+                    metrics.put("shares", 0);
+                    metrics.put("engagement_score", 0);
+                }
+                item.put("metrics", metrics);
+                
+                // Add engagementScore at top level for sorting
+                item.put("engagementScore", postMetrics != null ? calculateEngagementScore(postMetrics) : 0.0);
                 
                 return item;
             })
             .sorted((a, b) -> Double.compare(
-                (Double) b.get("engagementScore"), 
-                (Double) a.get("engagementScore")
+                (Double) a.get("engagementScore"), 
+                (Double) b.get("engagementScore")
             ))
             .limit(limit)
             .collect(Collectors.toList());

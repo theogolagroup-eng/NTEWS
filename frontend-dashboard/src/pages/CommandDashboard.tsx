@@ -26,7 +26,9 @@ import {
 
   Alert,
 
-  Spin
+  Spin,
+
+  Tabs
 
 } from 'antd';
 
@@ -57,6 +59,7 @@ import { API_ENDPOINTS, apiClient } from '@/services/api';
 import { useTheme } from '@/contexts/ThemeContext';
 
 import ActionPointsPanel from '@/components/action-points/ActionPointsPanel';
+import BlueskyTweetsPanel from '@/components/BlueskyTweetsPanel';
 
 
 
@@ -458,6 +461,18 @@ function CommandDashboard() {
     return colors[severity as keyof typeof colors] || 'default';
   };
 
+  const getStatusColor = (status: string) => {
+    const colors = {
+      active: 'red',
+      acknowledged: 'orange',
+      investigating: 'blue',
+      resolved: 'green',
+      closed: 'default',
+      false_positive: 'purple'
+    };
+    return colors[status as keyof typeof colors] || 'default';
+  };
+
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'increasing': return <ExclamationCircleOutlined style={{ color: themeStyles.errorColor }} />;
@@ -851,7 +866,7 @@ function CommandDashboard() {
 
         <Col xs={24} lg={16}>
 
-          {/* Recent Alerts */}
+          {/* Live Alerts and Tweets */}
 
           <Card 
 
@@ -867,113 +882,176 @@ function CommandDashboard() {
 
             }}
 
-            title={
-
-              <div style={{ color: themeStyles.textColor, fontSize: '14px', fontWeight: '600', textShadow: themeStyles.textShadow }}>
-
-                <BellOutlined style={{ marginRight: '8px', color: themeStyles.successColor }} />
-
-                LIVE ALERTS
-
-                <Badge count={alertSummary.activeAlerts} style={{ marginLeft: '8px', backgroundColor: themeStyles.successColor }} />
-
-              </div>
-
-            }
-
-            styles={{ body: { padding: '12px' } }}
+            styles={{ body: { padding: '8px' } }}
 
           >
 
-            <List
+            <Tabs
 
-              dataSource={alertSummary.recentAlerts || []}
+              defaultActiveKey="alerts"
 
-              renderItem={(item: any) => (
+              size="small"
 
-                <List.Item style={{ 
+              style={{ 
 
-                  padding: '8px 0',
+                color: themeStyles.textColor,
 
-                  borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.06)'
+              }}
 
-                }}>
+              items={ [
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                {
 
-                    <div style={{ flex: 1 }}>
+                  key: 'alerts',
 
-                      <div style={{ 
+                  label: (
 
-                        fontSize: '13px', 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 
-                        fontWeight: '600', 
+                      <BellOutlined style={{ color: themeStyles.successColor }} />
 
-                        color: themeStyles.textColor,
+                      <span style={{ color: themeStyles.textColor }}>LIVE ALERTS</span>
 
-                        marginBottom: '2px',
-
-                        textShadow: themeStyles.textShadow
-
-                      }}>
-
-                        {item.title}
-
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-
-                        <Tag 
-
-                          color={getSeverityColor(item.severity)}
-
-                          style={{ fontSize: '10px', padding: '2px 6px', border: 'none' }}
-
-                        >
-
-                          {item.severity?.toUpperCase()}
-
-                        </Tag>
-
-                        <Tag 
-
-                          color="blue"
-
-                          style={{ fontSize: '10px', padding: '2px 6px', border: 'none' }}
-
-                        >
-
-                          {item.priority?.toUpperCase()}
-
-                        </Tag>
-
-                        <span style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textShadow: themeStyles.textShadow }}>
-
-                          {item.location || 'Unknown Location'}
-
-                        </span>
-
-                      </div>
+                      <Badge count={alertSummary.activeAlerts} style={{ backgroundColor: themeStyles.successColor }} />
 
                     </div>
 
-                    <div style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textShadow: themeStyles.textShadow }}>
+                  ),
 
-                      {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'Unknown Time'}
+                  children: (
 
+                    <List
+
+                      dataSource={alertSummary.recentAlerts || []}
+
+                      renderItem={(item: any) => (
+
+                        <List.Item style={{ 
+
+                          padding: '8px 0',
+
+                          borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.06)'
+
+                        }}>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+
+                            <div style={{ flex: 1 }}>
+
+                              <div style={{ 
+
+                                fontSize: '13px', 
+
+                                fontWeight: '600', 
+
+                                color: themeStyles.textColor,
+
+                                marginBottom: '2px',
+
+                                textShadow: themeStyles.textShadow
+
+                              }}>
+
+                                {item.title}
+
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+                                <Tag 
+
+                                  color={getSeverityColor(item.severity)}
+
+                                  style={{ fontSize: '10px', padding: '2px 6px', border: 'none' }}
+
+                                >
+
+                                  {item.severity?.toUpperCase()}
+
+                                </Tag>
+
+                                <Tag 
+
+                                  color="blue"
+
+                                  style={{ fontSize: '10px', padding: '2px 6px', border: 'none' }}
+
+                                >
+
+                                  {item.priority?.toUpperCase()}
+
+                                </Tag>
+
+                                <span style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textShadow: themeStyles.textShadow }}>
+
+                                  {item.location || 'Unknown Location'}
+
+                                </span>
+
+                              </div>
+
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+
+                              <span style={{ fontSize: '11px', color: themeStyles.secondaryTextColor, textShadow: themeStyles.textShadow }}>
+
+                                {new Date(item.createdAt || item.timestamp).toLocaleTimeString()}
+
+                              </span>
+
+                              {item.status && (
+
+                                <Tag 
+
+                                  color={getStatusColor(item.status)}
+
+                                  style={{ fontSize: '9px', padding: '1px 4px', border: 'none' }}
+
+                                >
+
+                                  {item.status?.replace('_', ' ').toUpperCase()}
+
+                                </Tag>
+
+                              )}
+
+                            </div>
+
+                          </div>
+
+                        </List.Item>
+
+                      )}
+
+                    />
+
+                  ),
+
+                },
+
+
+                {
+                  key: 'tweets',
+                  label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ 
+                        color: '#1DA1F2',
+                        fontSize: '16px',
+                        marginRight: '8px',
+                        display: 'inline-block',
+                        verticalAlign: 'middle'
+                      }}>𝕏</span>
+                      <span style={{ color: themeStyles.textColor }}>TWEETS</span>
                     </div>
-
-                  </div>
-
-                </List.Item>
-
-              )}
+                  ),
+                  children: <BlueskyTweetsPanel isDarkMode={isDarkMode} themeStyles={themeStyles} />
+                }
+              ]}
 
             />
 
           </Card>
-
-
 
           {/* Top Hotspots */}
 

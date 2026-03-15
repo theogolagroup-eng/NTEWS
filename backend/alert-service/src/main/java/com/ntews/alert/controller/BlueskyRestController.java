@@ -2,12 +2,16 @@ package com.ntews.alert.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ntews.alert.model.Alert;
+import com.ntews.alert.model.UnifiedPost;
+import com.ntews.alert.repository.ProcessedPostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 /**
  * REST controller for receiving data from Bluesky ingestion service
@@ -20,6 +24,7 @@ import java.util.Map;
 public class BlueskyRestController {
 
     private final ObjectMapper objectMapper;
+    private final ProcessedPostRepository processedPostRepository;
     
     /**
      * Receive post data from ingestion service via REST
@@ -28,6 +33,26 @@ public class BlueskyRestController {
     public ResponseEntity<String> receiveBlueskyPost(@RequestBody Map<String, Object> postData) {
         try {
             log.info("📨 Received post from ingestion service: {}", postData.get("id"));
+            
+            // Convert post data to UnifiedPost with AI analysis
+            UnifiedPost processedPost = UnifiedPost.builder()
+                .id(String.valueOf(postData.get("id")))
+                .source(String.valueOf(postData.get("source")))
+                .author((String) postData.get("author"))
+                .authorHandle((String) postData.get("author_handle"))
+                .text((String) postData.get("text"))
+                .cleanedText((String) postData.get("cleaned_text"))
+                .timestamp(java.time.LocalDateTime.now())
+                .url((String) postData.get("url"))
+                .language((String) postData.get("language"))
+                .hashtags(new ArrayList<>((java.util.List<String>) postData.getOrDefault("hashtags", new ArrayList<>())))
+                .processedAt(java.time.LocalDateTime.now())
+                .metadata(postData)
+                .threatLevel((String) postData.get("threat_level"))
+                .build();
+            
+            // Store processed post with AI analysis
+            processedPostRepository.savePost(processedPost);
             
             // Create alert from post data
             Alert alert = Alert.builder()
