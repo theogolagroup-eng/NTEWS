@@ -9,7 +9,8 @@ import {
   HeartOutlined,
   MessageOutlined,
   ShareAltOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  BulbOutlined
 } from '@ant-design/icons';
 
 interface BlueskyPost {
@@ -73,10 +74,13 @@ const BlueskyTweetsPanel: React.FC<BlueskyTweetsPanelProps> = ({
       
       const data = await response.json();
       
-      // Transform backend data to match frontend interface
-      const transformedTweets = (Array.isArray(data) ? data : []).map((post: any, index) => {
+      console.log('🔍 Raw API data:', data);
+      console.log('🔍 First post confidence:', data[0]?.confidence);
+      console.log('🔍 First post metrics:', data[0]?.metrics);
+      
+      const transformedTweets = data.map((post: any) => {
         // Generate a fallback ID for posts with empty postUri
-        const postId = post.postUri || post.id || post.post_id || `post-${index}`;
+        const postId = post.postUri || post.id || post.post_id || `post-${post.id}`;
         
         return {
           id: postId,
@@ -98,9 +102,16 @@ const BlueskyTweetsPanel: React.FC<BlueskyTweetsPanelProps> = ({
             score: post.threat_level?.score || 0,
             category: post.threat_level?.category || 'low',
             keywords: post.threat_level?.keywords || []
+          },
+          ai_analysis: {
+            confidence: post.confidence || 0.7
           }
         };
       });
+      
+      console.log('🔍 Transformed tweets:', transformedTweets);
+      console.log('🔍 First transformed confidence:', transformedTweets[0]?.ai_analysis?.confidence);
+      console.log('🔍 First transformed engagement:', transformedTweets[0]?.metrics?.engagement_score);
       
       setTweets(transformedTweets);
     } catch (error) {
@@ -165,26 +176,31 @@ const BlueskyTweetsPanel: React.FC<BlueskyTweetsPanelProps> = ({
       ) : (
         <List
           dataSource={tweets}
-          renderItem={(tweet: BlueskyPost) => (
-            <List.Item style={{ 
-              padding: '8px 0',
-              borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.06)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ 
-                    fontSize: '13px', 
-                    fontWeight: '600', 
-                    color: themeStyles.textColor,
-                    marginBottom: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span>{tweet.author}</span>
-                    <span style={{ opacity: 0.7, fontSize: '12px' }}>{tweet.author_handle}</span>
-                    {tweet.threat_level.score > 0.4 && getThreatIcon(tweet.threat_level.score)}
-                  </div>
+          renderItem={(tweet: BlueskyPost) => {
+            console.log('🎨 Rendering tweet:', tweet);
+            console.log('🎨 Tweet confidence:', tweet.ai_analysis?.confidence);
+            console.log('🎨 Tweet engagement:', tweet.metrics?.engagement_score);
+            
+            return (
+              <List.Item style={{ 
+                padding: '8px 0',
+                borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.06)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      fontWeight: '600', 
+                      color: themeStyles.textColor,
+                      marginBottom: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <span>{tweet.author}</span>
+                      <span style={{ opacity: 0.7, fontSize: '12px' }}>{tweet.author_handle}</span>
+                      {tweet.threat_level.score > 0.4 && getThreatIcon(tweet.threat_level.score)}
+                    </div>
                   
                   <div style={{ 
                     fontSize: '12px', 
@@ -234,40 +250,71 @@ const BlueskyTweetsPanel: React.FC<BlueskyTweetsPanelProps> = ({
                   </div>
                 </div>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                  <Tooltip title="AI Analysis">
-                    <div style={{ 
-                      fontSize: '10px', 
-                      color: themeStyles.textColor,
-                      textAlign: 'center',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-                    }}>
-                      AI: {Math.round(tweet.ai_analysis.confidence * 100)}%
-                    </div>
-                  </Tooltip>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  {/* AI Analysis Badge */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    backgroundColor: tweet.ai_analysis.confidence >= 0.8 
+                      ? 'rgba(220, 38, 38, 0.1)' 
+                      : tweet.ai_analysis.confidence >= 0.6 
+                      ? 'rgba(245, 158, 11, 0.1)' 
+                      : 'rgba(34, 197, 94, 0.1)',
+                    color: tweet.ai_analysis.confidence >= 0.8 
+                      ? '#dc2626' 
+                      : tweet.ai_analysis.confidence >= 0.6 
+                      ? '#f59e0b'
+                      : '#22c55e',
+                    border: `1px solid ${
+                      tweet.ai_analysis.confidence >= 0.8 
+                        ? '#dc2626' 
+                        : tweet.ai_analysis.confidence >= 0.6 
+                        ? '#f59e0b'
+                        : '#22c55e'
+                    }`
+                  }}>
+                    <BulbOutlined style={{ fontSize: '10px' }} />
+                    AI: {Math.round(tweet.ai_analysis.confidence * 100)}%
+                  </div>
                   
-                  <Tooltip title="Engagement Score">
-                    <div style={{ 
-                      fontSize: '10px', 
-                      color: themeStyles.textColor,
-                      textAlign: 'center',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-                    }}>
-                      <EyeOutlined /> {tweet.metrics.engagement_score}
-                    </div>
-                  </Tooltip>
+                  {/* Engagement Metrics */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '2px 6px',
+                    borderRadius: '8px',
+                    fontSize: '10px',
+                    color: themeStyles.textColor,
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    opacity: 0.8
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <HeartOutlined style={{ fontSize: '10px' }} />
+                      {tweet.metrics.likes}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <ShareAltOutlined style={{ fontSize: '10px' }} />
+                      {tweet.metrics.shares}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <MessageOutlined style={{ fontSize: '10px' }} />
+                      {tweet.metrics.replies}
+                    </span>
+                  </div>
                 </div>
               </div>
             </List.Item>
-          )}
+            );
+          }}
         />
       )}
     </Card>
   );
 };
-
 export default BlueskyTweetsPanel;

@@ -59,6 +59,11 @@ public class UnifiedPost {
     @JsonProperty("processed_at")
     public LocalDateTime processedAt;
     
+    // Public getter for metrics
+    public PostMetrics getMetrics() {
+        return metrics;
+    }
+    
     /**
      * Engagement metrics for the post
      */

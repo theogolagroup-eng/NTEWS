@@ -3,6 +3,7 @@ package com.ntews.ingestion.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ntews.ingestion.client.ServiceWebSocketClient;
+import com.ntews.ingestion.client.AIEngineClient;
 import com.ntews.ingestion.model.UnifiedPost;
 import com.ntews.ingestion.service.BlueskyMetricsAggregator;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class BlueskyJetstreamService {
     private static final Logger log = LoggerFactory.getLogger(BlueskyJetstreamService.class);
 
     private final ServiceWebSocketClient serviceWebSocketClient;
+    private final AIEngineClient aiEngineClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BlueskyMetricsAggregator metricsAggregator;
     private WebSocket webSocket;
@@ -348,6 +350,14 @@ public class BlueskyJetstreamService {
             
             // Store post in metrics aggregator with intelligent threat-based storage
             metricsAggregator.storePost(post, threatLevel);
+            
+            // Analyze with AI Engine for enhanced threat detection
+            try {
+                aiEngineClient.analyzeBlueskyPost(post);
+                log.info("🤖 AI Engine analysis completed for post: {}", post.id);
+            } catch (Exception e) {
+                log.warn("⚠️ AI Engine analysis failed for post {}: {}", post.id, e.getMessage());
+            }
             
             log.info("🚨 SECURITY POST: ID={}, Threat={}, Length={}, Author={}", 
                 post.id, threatLevel, text.length(), readableAuthor);

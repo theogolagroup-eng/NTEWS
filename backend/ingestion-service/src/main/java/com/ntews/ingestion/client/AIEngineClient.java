@@ -1,6 +1,7 @@
 package com.ntews.ingestion.client;
 
 import com.ntews.ingestion.model.ThreatData;
+import com.ntews.ingestion.model.UnifiedPost;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -248,5 +249,57 @@ public class AIEngineClient {
         public List<String> getRiskFactors() { return riskFactors; }
         public String getPredictedImpact() { return predictedImpact; }
         public LocalDateTime getPredictionTimestamp() { return predictionTimestamp; }
+    }
+    
+    /**
+     * Analyze Bluesky post with AI Engine
+     */
+    public void analyzeBlueskyPost(UnifiedPost post) {
+        try {
+            String url = aiEngineUrl + "/nlp/analyze-sheng";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Content-Type", "application/json");
+            
+            // Convert UnifiedPost to AI Engine format
+            Map<String, Object> request = new HashMap<>();
+            request.put("text", post.text);
+            request.put("context", "bluesky_security_analysis");
+            request.put("language", post.language != null ? post.language : "en");
+            request.put("author", post.author);
+            request.put("source", "bluesky");
+            request.put("created_at", post.timestamp);
+            
+            // Include metrics if available
+            if (post.getMetrics() != null) {
+                request.put("likes", post.getMetrics().likes);
+                request.put("shares", post.getMetrics().reposts);
+                request.put("replies", post.getMetrics().replies);
+            }
+            
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> aiResult = response.getBody();
+                
+                // Update post with AI analysis results
+                if (post.metadata == null) {
+                    post.metadata = new HashMap<>();
+                }
+                
+                post.metadata.put("ai_confidence", aiResult.getOrDefault("confidence", 0.7));
+                post.metadata.put("ai_classification", aiResult.getOrDefault("classification", "neutral"));
+                post.metadata.put("ai_risk_score", aiResult.getOrDefault("risk_score", 0.3));
+                post.metadata.put("ai_threat_keywords", aiResult.getOrDefault("threat_keywords", new ArrayList<>()));
+                
+                log.debug("🤖 AI analysis updated for post {}: confidence={}, classification={}", 
+                    post.id, aiResult.get("confidence"), aiResult.get("classification"));
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to analyze Bluesky post with AI Engine: {}", e.getMessage());
+            // Don't rethrow - continue processing without AI analysis
+        }
     }
 }

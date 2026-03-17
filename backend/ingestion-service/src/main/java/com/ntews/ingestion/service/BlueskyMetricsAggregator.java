@@ -345,6 +345,13 @@ public class BlueskyMetricsAggregator {
                 }
                 item.put("metrics", metrics);
                 
+                // Add AI confidence from metadata
+                if (post.metadata != null && post.metadata.containsKey("ai_confidence")) {
+                    item.put("confidence", post.metadata.get("ai_confidence"));
+                } else {
+                    item.put("confidence", 0.7); // Default confidence
+                }
+                
                 // Add engagementScore at top level for sorting
                 item.put("engagementScore", postMetrics != null ? calculateEngagementScore(postMetrics) : 0.0);
                 
